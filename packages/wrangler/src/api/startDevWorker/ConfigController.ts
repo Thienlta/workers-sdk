@@ -21,7 +21,6 @@ import {
 } from "../../environment-variables/misc-variables";
 import { UserError } from "../../errors";
 import { getFlag } from "../../experimental-flags";
-import { isNonInteractiveOrCI } from "../../is-interactive";
 import { logger, runWithLogLevel } from "../../logger";
 import { checkTypesDiff } from "../../type-generation/helpers";
 import {
@@ -364,16 +363,6 @@ async function resolveConfig(
 	} satisfies StartDevWorkerOptions;
 
 	if (
-		extractBindingsOfType("browser", resolved.bindings).length &&
-		!resolved.dev.remote &&
-		!getFlag("REMOTE_BINDINGS")
-	) {
-		logger.warn(
-			"Browser Rendering is not supported locally. Please use `wrangler dev --remote` instead."
-		);
-	}
-
-	if (
 		extractBindingsOfType("analytics_engine", resolved.bindings).length &&
 		!resolved.dev.remote &&
 		resolved.build.format === "service-worker"
@@ -414,11 +403,7 @@ async function resolveConfig(
 		(c) => !isDockerfile(c.image ?? c.configuration?.image)
 	);
 	if (needsPulling && !resolved.dev.remote) {
-		await fillOpenAPIConfiguration(
-			config,
-			isNonInteractiveOrCI(),
-			containersScope
-		);
+		await fillOpenAPIConfiguration(config, containersScope);
 	}
 
 	// TODO(queues) support remote wrangler dev
