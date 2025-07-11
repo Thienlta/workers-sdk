@@ -1,5 +1,35 @@
 # wrangler
 
+## 4.24.3
+
+### Patch Changes
+
+- [#9923](https://github.com/cloudflare/workers-sdk/pull/9923) [`c01c4ee`](https://github.com/cloudflare/workers-sdk/commit/c01c4ee6affd0acf2f678d9c562f4a7d6db82465) Thanks [@gpanders](https://github.com/gpanders)! - Fix image name resolution when modifying a container application
+
+- [#9833](https://github.com/cloudflare/workers-sdk/pull/9833) [`3743896`](https://github.com/cloudflare/workers-sdk/commit/3743896120baa530c1b6d4cb7eeda27847b2db44) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - fix: ensure that container builds don't disrupt dev hotkey handling
+
+  currently container builds run during local development (via `wrangler dev` or `startWorker`) prevent the standard hotkeys not to be recognized (most noticeably `ctrl+c`, preventing developers from existing the process), the changes here ensure that hotkeys are instead correctly handled as expected
+
+- Updated dependencies []:
+  - miniflare@4.20250709.0
+
+## 4.24.2
+
+### Patch Changes
+
+- [#9917](https://github.com/cloudflare/workers-sdk/pull/9917) [`80cc834`](https://github.com/cloudflare/workers-sdk/commit/80cc83403e2adb6e989455ba28743f282c5509c8) Thanks [@edmundhung](https://github.com/edmundhung)! - fix: assets only versions upload should include tag and message
+
+## 4.24.1
+
+### Patch Changes
+
+- [#9765](https://github.com/cloudflare/workers-sdk/pull/9765) [`05adc61`](https://github.com/cloudflare/workers-sdk/commit/05adc615c97df5174dd6c85b06cf40ec12ffe404) Thanks [@hasip-timurtas](https://github.com/hasip-timurtas)! - Build container images without the user's account ID. This allows containers to be built and verified in dry run mode (where we do not necessarily have the user's account info).
+
+  When we push the image to the managed registry, we first re-tag the image to include the user's account ID so that the image has the full resolved image name.
+
+- Updated dependencies [[`bb09e50`](https://github.com/cloudflare/workers-sdk/commit/bb09e50d8e7f823172f3e492ca111157a105adb1), [`25dbe54`](https://github.com/cloudflare/workers-sdk/commit/25dbe5480dd1d14ee25b38fc5e0105f938b1ee5b), [`3bdec6b`](https://github.com/cloudflare/workers-sdk/commit/3bdec6b768a0b68560ad6d24274007de3a7fbc26)]:
+  - miniflare@4.20250709.0
+
 ## 4.24.0
 
 ### Minor Changes
