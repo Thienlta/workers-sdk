@@ -2454,10 +2454,10 @@ describe("normalizeAndValidateConfig()", () => {
 					  - The image \\"something\\" does not appear to be a valid path to a Dockerfile, or a valid image registry path:
 					    If this is an image registry path, it needs to include at least a tag ':' (e.g: docker.io/httpd:1)
 					  - Expected \\"containers.rollout_kind\\" field to be one of [\\"full_auto\\",\\"full_manual\\",\\"none\\"] but got \\"invalid\\".
-					  - Expected \\"containers.instance_type\\" field to be one of [\\"dev\\",\\"basic\\",\\"standard\\"] but got \\"invalid\\".
 					  - Expected \\"containers.max_instances\\" to be of type number but got \\"invalid\\".
 					  - Expected \\"containers.image_vars\\" to be of type object but got \\"invalid\\".
-					  - Expected \\"containers.scheduling_policy\\" field to be one of [\\"regional\\",\\"moon\\",\\"default\\"] but got \\"invalid\\"."
+					  - Expected \\"containers.scheduling_policy\\" field to be one of [\\"regional\\",\\"moon\\",\\"default\\"] but got \\"invalid\\".
+					  - Expected \\"containers.instance_type\\" field to be one of [\\"dev\\",\\"basic\\",\\"standard\\"] but got \\"invalid\\"."
 				`);
 			});
 
@@ -2485,7 +2485,7 @@ describe("normalizeAndValidateConfig()", () => {
 
 				expect(diagnostics.renderWarnings()).toMatchInlineSnapshot(`
 					"Processing wrangler configuration:
-					  - \\"containers.configuration\\" is deprecated. Use top level \\"containers\\" fields instead. \\"configuration.image\\" should be \\"image\\", \\"configuration.disk\\" should be set via \\"instance_type\\".
+					  - \\"containers.configuration\\" is deprecated. Use top level \\"containers\\" fields instead. \\"configuration.image\\" should be \\"image\\", limits should be set via \\"instance_type\\".
 					  - \\"containers.instances\\" is deprecated. Use \\"containers.max_instances\\" instead.
 					  - \\"containers.durable_objects\\" is deprecated. Use the \\"class_name\\" field instead."
 				`);
@@ -2519,7 +2519,7 @@ describe("normalizeAndValidateConfig()", () => {
 
 				expect(diagnostics.renderWarnings()).toMatchInlineSnapshot(`
 					"Processing wrangler configuration:
-					  - \\"containers.configuration\\" is deprecated. Use top level \\"containers\\" fields instead. \\"configuration.image\\" should be \\"image\\", \\"configuration.disk\\" should be set via \\"instance_type\\".
+					  - \\"containers.configuration\\" is deprecated. Use top level \\"containers\\" fields instead. \\"configuration.image\\" should be \\"image\\", limits should be set via \\"instance_type\\".
 					  - Unexpected fields found in containers.configuration field: \\"memory\\",\\"invalid_field\\",\\"another_invalid\\""
 				`);
 			});
@@ -6643,6 +6643,93 @@ describe("experimental_readRawConfig()", () => {
 			});
 		}
 	);
+});
+
+describe("BOM (Byte Order Marker) handling", () => {
+	runInTempDir();
+
+	it("should remove UTF-8 BOM from TOML config files", () => {
+		const configContent = `name = "test-worker"
+compatibility_date = "2022-01-12"`;
+
+		fs.writeFileSync(
+			"wrangler.toml",
+			Buffer.concat([
+				Buffer.from([0xef, 0xbb, 0xbf]),
+				Buffer.from(configContent, "utf-8"),
+			])
+		);
+
+		const config = readConfig({ config: "wrangler.toml" });
+		expect(config.name).toBe("test-worker");
+		expect(config.compatibility_date).toBe("2022-01-12");
+	});
+
+	it("should remove UTF-8 BOM from JSON config files", () => {
+		const configContent = `{
+	"name": "test-worker",
+	"compatibility_date": "2022-01-12"
+}`;
+
+		fs.writeFileSync(
+			"wrangler.json",
+			Buffer.concat([
+				Buffer.from([0xef, 0xbb, 0xbf]),
+				Buffer.from(configContent, "utf-8"),
+			])
+		);
+
+		const config = readConfig({ config: "wrangler.json" });
+		expect(config.name).toBe("test-worker");
+		expect(config.compatibility_date).toBe("2022-01-12");
+	});
+
+	it("should error on UTF-16 BE BOM", () => {
+		const bomBytes = Buffer.from([0xfe, 0xff]);
+		const configContent = Buffer.from('{"name": "test"}', "utf-8");
+		fs.writeFileSync("wrangler.json", Buffer.concat([bomBytes, configContent]));
+
+		expect(() => readConfig({ config: "wrangler.json" })).toThrow(
+			"Configuration file contains UTF-16 BE byte order marker"
+		);
+	});
+
+	it("should error on UTF-16 LE BOM", () => {
+		const bomBytes = Buffer.from([0xff, 0xfe]);
+		const configContent = Buffer.from('{"name": "test"}', "utf-8");
+		fs.writeFileSync("wrangler.json", Buffer.concat([bomBytes, configContent]));
+
+		expect(() => readConfig({ config: "wrangler.json" })).toThrow(
+			"Configuration file contains UTF-16 LE byte order marker"
+		);
+	});
+
+	it("should error on UTF-32 BE BOM", () => {
+		const bomBytes = Buffer.from([0x00, 0x00, 0xfe, 0xff]);
+		const configContent = Buffer.from('{"name": "test"}', "utf-8");
+		fs.writeFileSync("wrangler.json", Buffer.concat([bomBytes, configContent]));
+
+		expect(() => readConfig({ config: "wrangler.json" })).toThrow(
+			"Configuration file contains UTF-32 BE byte order marker"
+		);
+	});
+
+	it("should error on UTF-32 LE BOM", () => {
+		const bomBytes = Buffer.from([0xff, 0xfe, 0x00, 0x00]);
+		const configContent = Buffer.from('{"name": "test"}', "utf-8");
+		fs.writeFileSync("wrangler.json", Buffer.concat([bomBytes, configContent]));
+
+		expect(() => readConfig({ config: "wrangler.json" })).toThrow(
+			"Configuration file contains UTF-32 LE byte order marker"
+		);
+	});
+
+	it("should handle files without BOM normally", () => {
+		writeWranglerConfig({ name: "no-bom-test" });
+
+		const config = readConfig({ config: "wrangler.toml" });
+		expect(config.name).toBe("no-bom-test");
+	});
 });
 
 function normalizePath(text: string): string {

@@ -2000,10 +2000,75 @@ const validateDurableObjectBinding: ValidatorFn = (
 /**
  * Check that the given field is a valid "workflow" binding object.
  */
-const validateWorkflowBinding: ValidatorFn = (_diagnostics, _field, _value) => {
-	// TODO
+const validateWorkflowBinding: ValidatorFn = (diagnostics, field, value) => {
+	if (typeof value !== "object" || value === null) {
+		diagnostics.errors.push(
+			`"workflows" bindings should be objects, but got ${JSON.stringify(value)}`
+		);
+		return false;
+	}
 
-	return true;
+	let isValid = true;
+
+	if (!isRequiredProperty(value, "binding", "string")) {
+		diagnostics.errors.push(
+			`"${field}" bindings should have a string "binding" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	}
+
+	if (!isRequiredProperty(value, "name", "string")) {
+		diagnostics.errors.push(
+			`"${field}" bindings should have a string "name" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	} else if (value.name.length > 64) {
+		diagnostics.errors.push(
+			`"${field}" binding "name" field must be 64 characters or less, but got ${value.name.length} characters.`
+		);
+		isValid = false;
+	}
+
+	if (!isRequiredProperty(value, "class_name", "string")) {
+		diagnostics.errors.push(
+			`"${field}" bindings should have a string "class_name" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	}
+
+	if (!isOptionalProperty(value, "script_name", "string")) {
+		diagnostics.errors.push(
+			`"${field}" bindings should, optionally, have a string "script_name" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	}
+
+	if (!isOptionalProperty(value, "experimental_remote", "boolean")) {
+		diagnostics.errors.push(
+			`"${field}" bindings should, optionally, have a boolean "experimental_remote" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	}
+
+	validateAdditionalProperties(diagnostics, field, Object.keys(value), [
+		"binding",
+		"name",
+		"class_name",
+		"script_name",
+		"experimental_remote",
+	]);
+
+	return isValid;
 };
 
 const validateCflogfwdrObject: (env: string) => ValidatorFn =
@@ -2428,13 +2493,13 @@ function validateContainerApp(
 				!containerAppOptional.image
 			) {
 				diagnostics.errors.push(
-					`"containers.image" field must be defined for each container app. This should be the path to your Dockerfile or a image URI pointing to the Cloudflare registry.`
+					`"containers.image" field must be defined for each container app. This should be the path to your Dockerfile or an image URI pointing to the Cloudflare registry.`
 				);
 			}
 
 			if ("configuration" in containerAppOptional) {
 				diagnostics.warnings.push(
-					`"containers.configuration" is deprecated. Use top level "containers" fields instead. "configuration.image" should be "image", "configuration.disk" should be set via "instance_type".`
+					`"containers.configuration" is deprecated. Use top level "containers" fields instead. "configuration.image" should be "image", limits should be set via "instance_type".`
 				);
 				if (
 					typeof containerAppOptional.configuration !== "object" ||
@@ -2512,14 +2577,6 @@ function validateContainerApp(
 			validateOptionalProperty(
 				diagnostics,
 				field,
-				"instance_type",
-				containerAppOptional.instance_type,
-				"string",
-				["dev", "basic", "standard"]
-			);
-			validateOptionalProperty(
-				diagnostics,
-				field,
 				"max_instances",
 				containerAppOptional.max_instances,
 				"number"
@@ -2587,6 +2644,56 @@ function validateContainerApp(
 					`${field}.configuration`,
 					Object.keys(containerAppOptional.configuration),
 					["image", "secrets", "labels", "disk", "vcpu", "memory_mib"]
+				);
+			}
+
+			// Instance Type validation: When present, the instance type should be either (1) a string
+			// representing a predefined instance type or (2) an object that optionally defines vcpu,
+			// memory, and disk.
+			//
+			// If an instance type is not set, a 'dev' instance type will be used. If a custom instance
+			// type doesn't set a value, that value will default to the corresponding value in a 'dev'
+			// instance type
+			if (typeof containerAppOptional.instance_type === "string") {
+				// validate named instance type
+				validateOptionalProperty(
+					diagnostics,
+					field,
+					"instance_type",
+					containerAppOptional.instance_type,
+					"string",
+					["dev", "basic", "standard"]
+				);
+			} else if (
+				validateOptionalProperty(
+					diagnostics,
+					field,
+					"instance_type",
+					containerAppOptional.instance_type,
+					"object"
+				) &&
+				containerAppOptional.instance_type
+			) {
+				// validate custom instance type
+				const instanceTypeProperties = ["vcpu", "memory_mib", "disk_mb"];
+				instanceTypeProperties.forEach((key) => {
+					if (
+						!isOptionalProperty(
+							containerAppOptional.instance_type,
+							key,
+							"number"
+						)
+					) {
+						diagnostics.errors.push(
+							`"containers.instance_type.${key}", when present, should be a number.`
+						);
+					}
+				});
+				validateAdditionalProperties(
+					diagnostics,
+					`${field}.instance_type`,
+					Object.keys(containerAppOptional.instance_type),
+					instanceTypeProperties
 				);
 			}
 		}

@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { generateContainerBuildId } from "@cloudflare/containers-shared";
 import { LocalRuntimeController } from "../api/startDevWorker/LocalRuntimeController";
 import registerHotKeys from "../cli-hotkeys";
 import { logger } from "../logger";
@@ -63,15 +63,14 @@ export default function registerDevHotKeys(
 						}
 					});
 					// cleanup any existing containers
-					await Promise.all(
-						devEnv.runtimes.map(async (runtime) => {
-							if (runtime instanceof LocalRuntimeController) {
-								await runtime.cleanupContainers();
-							}
-						})
-					);
 
-					const newContainerBuildId = randomUUID().slice(0, 8);
+					devEnv.runtimes.map((runtime) => {
+						if (runtime instanceof LocalRuntimeController) {
+							runtime.cleanupContainers();
+						}
+					});
+
+					const newContainerBuildId = generateContainerBuildId();
 
 					// updating the build ID will trigger a rebuild of the containers
 					await devEnv.config.patch({

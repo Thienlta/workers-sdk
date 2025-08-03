@@ -1,15 +1,17 @@
 import assert from "node:assert";
 import * as fsp from "node:fs/promises";
 import * as path from "node:path";
+import * as util from "node:util";
 import {
+	cleanupContainers,
 	generateContainerBuildId,
-	getContainerIdsByImageTags,
 	resolveDockerHost,
 } from "@cloudflare/containers-shared/src/utils";
 import { generateStaticRoutingRuleMatcher } from "@cloudflare/workers-shared/asset-worker/src/utils/rules-engine";
 import replace from "@rollup/plugin-replace";
 import MagicString from "magic-string";
 import { Miniflare } from "miniflare";
+import colors from "picocolors";
 import * as vite from "vite";
 import {
 	createModuleReference,
@@ -27,11 +29,7 @@ import {
 	kRequestType,
 	ROUTER_WORKER_NAME,
 } from "./constants";
-import {
-	getDockerPath,
-	prepareContainerImages,
-	removeContainersByIds,
-} from "./containers";
+import { getDockerPath, prepareContainerImages } from "./containers";
 import {
 	addDebugToVitePrintUrls,
 	getDebugPathHtml,
@@ -40,8 +38,8 @@ import {
 } from "./debugging";
 import { writeDeployConfig } from "./deploy-config";
 import {
-	getDotDevDotVarsContent,
-	hasDotDevDotVarsFileChanged,
+	getLocalDevVarsForPreview,
+	hasLocalDevVarsFileChanged,
 } from "./dev-vars";
 import {
 	getDevMiniflareOptions,
@@ -82,9 +80,10 @@ import type { Unstable_RawConfig } from "wrangler";
 
 export type { PluginConfig } from "./plugin-config";
 
+const debuglog = util.debuglog("@cloudflare:vite-plugin");
+
 // this flag is used to show the workers configs warning only once
 let workersConfigsWarningShown = false;
-
 let miniflare: Miniflare | undefined;
 
 /**
@@ -100,8 +99,10 @@ export function cloudflare(pluginConfig: PluginConfig = {}): vite.Plugin[] {
 
 	const additionalModulePaths = new Set<string>();
 	const nodeJsCompatWarningsMap = new Map<WorkerConfig, NodeJsCompatWarnings>();
-	let containerImageTagsSeen: Set<string> | undefined;
-	let runningContainerIds: Array<string>;
+	let containerImageTagsSeen = new Set<string>();
+
+	/** Used to track whether hooks are being called because of a server restart or a server close event. */
+	let restartingServer = false;
 
 	return [
 		{
@@ -273,17 +274,16 @@ if (import.meta.hot) {
 					config = workerConfig;
 
 					if (workerConfig.configPath) {
-						const dotDevDotVarsContent = getDotDevDotVarsContent(
+						const localDevVars = getLocalDevVarsForPreview(
 							workerConfig.configPath,
 							resolvedPluginConfig.cloudflareEnv
 						);
-						// Save a .dev.vars file to the worker's build output directory
-						// when it exists so that it will be then detected by `vite preview`
-						if (dotDevDotVarsContent) {
+						// Save a .dev.vars file to the worker's build output directory if there are local dev vars, so that it will be then detected by `vite preview`.
+						if (localDevVars) {
 							this.emitFile({
 								type: "asset",
 								fileName: ".dev.vars",
-								source: dotDevDotVarsContent,
+								source: localDevVars,
 							});
 						}
 					}
@@ -335,29 +335,22 @@ if (import.meta.hot) {
 					writeDeployConfig(resolvedPluginConfig, resolvedViteConfig);
 				}
 			},
-			hotUpdate(options) {
-				assertIsNotPreview(resolvedPluginConfig);
-
-				// Note that we must "resolve" the changed file since the path from Vite will not match Windows backslashes.
-				const changedFilePath = path.resolve(options.file);
-
-				if (
-					resolvedPluginConfig.configPaths.has(changedFilePath) ||
-					hasDotDevDotVarsFileChanged(resolvedPluginConfig, changedFilePath) ||
-					hasAssetsConfigChanged(
-						resolvedPluginConfig,
-						resolvedViteConfig,
-						changedFilePath
-					)
-				) {
-					// It's OK for this to be called multiple times as Vite prevents concurrent execution
-					options.server.restart();
-					return [];
-				}
-			},
 			// Vite `configureServer` Hook
 			// see https://vite.dev/guide/api-plugin.html#configureserver
 			async configureServer(viteDevServer) {
+				// Patch the `server.restart` method to track whether the server is restarting or not.
+				const restartServer = viteDevServer.restart.bind(viteDevServer);
+				viteDevServer.restart = async () => {
+					try {
+						restartingServer = true;
+						debuglog("From server.restart(): Restarting server...");
+						await restartServer();
+						debuglog("From server.restart(): Restarted server...");
+					} finally {
+						restartingServer = false;
+					}
+				};
+
 				assertIsNotPreview(resolvedPluginConfig);
 
 				const inputInspectorPort = await getInputInspectorPortOption(
@@ -365,6 +358,26 @@ if (import.meta.hot) {
 					viteDevServer,
 					miniflare
 				);
+
+				const configChangedHandler = async (changedFilePath: string) => {
+					assertIsNotPreview(resolvedPluginConfig);
+
+					if (
+						resolvedPluginConfig.configPaths.has(changedFilePath) ||
+						hasLocalDevVarsFileChanged(resolvedPluginConfig, changedFilePath) ||
+						hasAssetsConfigChanged(
+							resolvedPluginConfig,
+							resolvedViteConfig,
+							changedFilePath
+						)
+					) {
+						debuglog("Config changed: " + changedFilePath);
+						viteDevServer.watcher.off("change", configChangedHandler);
+						debuglog("Restarting dev server and aborting previous setup");
+						await viteDevServer.restart();
+					}
+				};
+				viteDevServer.watcher.on("change", configChangedHandler);
 
 				let containerBuildId: string | undefined;
 				const entryWorkerConfig = getEntryWorkerConfig(resolvedPluginConfig);
@@ -387,9 +400,12 @@ if (import.meta.hot) {
 				});
 
 				if (!miniflare) {
+					debuglog("Creating new Miniflare instance");
 					miniflare = new Miniflare(miniflareDevOptions);
 				} else {
+					debuglog("Updating the existing Miniflare instance");
 					await miniflare.setOptions(miniflareDevOptions);
+					debuglog("Miniflare is ready");
 				}
 
 				let preMiddleware: vite.Connect.NextHandleFunction | undefined;
@@ -397,6 +413,7 @@ if (import.meta.hot) {
 				if (resolvedPluginConfig.type === "workers") {
 					assert(entryWorkerConfig, `No entry Worker config`);
 
+					debuglog("Initializing the Vite module runners");
 					await initRunners(resolvedPluginConfig, viteDevServer, miniflare);
 
 					const entryWorkerName = entryWorkerConfig.name;
@@ -449,6 +466,13 @@ if (import.meta.hot) {
 					}
 
 					if (hasDevContainers) {
+						viteDevServer.config.logger.info(
+							colors.dim(
+								colors.yellow(
+									"∷ Building container images for local development...\n"
+								)
+							)
+						);
 						containerImageTagsSeen = await prepareContainerImages({
 							containersConfig: entryWorkerConfig.containers,
 							containerBuildId,
@@ -456,17 +480,13 @@ if (import.meta.hot) {
 							dockerPath,
 							configPath: entryWorkerConfig.configPath,
 						});
-
-						// poll Docker every two seconds and update the list of ids of all
-						// running containers
-						const dockerPollIntervalId = setInterval(async () => {
-							if (containerImageTagsSeen?.size) {
-								runningContainerIds = await getContainerIdsByImageTags(
-									dockerPath,
-									containerImageTagsSeen
-								);
-							}
-						}, 2000);
+						viteDevServer.config.logger.info(
+							colors.dim(
+								colors.yellow(
+									"\n⚡️ Containers successfully built. To rebuild your containers during development, restart the Vite dev server (r + enter)."
+								)
+							)
+						);
 
 						/*
 						 * Upon exiting the dev process we should ensure we perform any
@@ -481,21 +501,11 @@ if (import.meta.hot) {
 						 * `process.exit()` imperatively, and therefore causes `beforeExit`
 						 * not to be emitted).
 						 *
-						 * Furthermore, since the `exit` event handler cannot perform async
-						 * ops as per spec (https://nodejs.org/api/process.html#event-exit),
-						 * we also need a mechanism to ensure that list of containers to be
-						 * cleaned up on exit is up to date. This is what the interval with id
-						 * `dockerPollIntervalId` is for.
-						 *
-						 * It is possible, though very unlikely, that in some rare cases,
-						 * we might be left with some orphaned containers, due to the fact
-						 * that at the point of exiting the dev process, our internal list
-						 * of container ids is out of date. We accept this caveat for now.
-						 *
 						 */
-						process.on("exit", () => {
-							clearInterval(dockerPollIntervalId);
-							removeContainersByIds(dockerPath, runningContainerIds);
+						process.on("exit", async () => {
+							if (containerImageTagsSeen.size) {
+								cleanupContainers(dockerPath, containerImageTagsSeen);
+							}
 						});
 					}
 				}
@@ -575,6 +585,13 @@ if (import.meta.hot) {
 				if (hasDevContainers) {
 					const dockerPath = getDockerPath();
 
+					vitePreviewServer.config.logger.info(
+						colors.dim(
+							colors.yellow(
+								"∷ Building container images for local preview...\n"
+							)
+						)
+					);
 					containerImageTagsSeen = await prepareContainerImages({
 						containersConfig: entryWorkerConfig.containers,
 						containerBuildId,
@@ -582,19 +599,14 @@ if (import.meta.hot) {
 						dockerPath,
 						configPath: entryWorkerConfig.configPath,
 					});
-
-					const dockerPollIntervalId = setInterval(async () => {
-						if (containerImageTagsSeen?.size) {
-							runningContainerIds = await getContainerIdsByImageTags(
-								dockerPath,
-								containerImageTagsSeen
-							);
-						}
-					}, 2000);
+					vitePreviewServer.config.logger.info(
+						colors.dim(colors.yellow("\n⚡️ Containers successfully built.\n"))
+					);
 
 					process.on("exit", () => {
-						clearInterval(dockerPollIntervalId);
-						removeContainersByIds(dockerPath, runningContainerIds);
+						if (containerImageTagsSeen.size) {
+							cleanupContainers(dockerPath, containerImageTagsSeen);
+						}
 					});
 				}
 
@@ -619,14 +631,16 @@ if (import.meta.hot) {
 					containerImageTagsSeen?.size
 				) {
 					const dockerPath = getDockerPath();
-					runningContainerIds = await getContainerIdsByImageTags(
-						dockerPath,
-						containerImageTagsSeen
-					);
+					cleanupContainers(dockerPath, containerImageTagsSeen);
+				}
 
-					await removeContainersByIds(dockerPath, runningContainerIds);
-					containerImageTagsSeen.clear();
-					runningContainerIds = [];
+				debuglog("buildEnd:", restartingServer ? "restarted" : "disposing");
+				if (!restartingServer) {
+					debuglog("buildEnd: disposing Miniflare instance");
+					await miniflare?.dispose().catch((error) => {
+						debuglog("buildEnd: failed to dispose Miniflare instance:", error);
+					});
+					miniflare = undefined;
 				}
 			},
 		},

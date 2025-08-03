@@ -776,56 +776,6 @@ export function _transformsForContentEncodingAndContentType(
 	return encoders;
 }
 
-async function writeResponse(response: Response, res: http.ServerResponse) {
-	// Convert headers into Node-friendly format
-	const headers: http.OutgoingHttpHeaders = {};
-	for (const entry of response.headers) {
-		const key = entry[0].toLowerCase();
-		const value = entry[1];
-		if (key === "set-cookie") {
-			headers[key] = response.headers.getSetCookie();
-		} else {
-			headers[key] = value;
-		}
-	}
-
-	// If a `Content-Encoding` header is set, we'll need to encode the body
-	// (likely only set by custom service bindings)
-	const encoding = headers["content-encoding"]?.toString();
-	const type = headers["content-type"]?.toString();
-	const encoders = _transformsForContentEncodingAndContentType(encoding, type);
-	if (encoders.length > 0) {
-		// `Content-Length` if set, will be wrong as it's for the decoded length
-		delete headers["content-length"];
-	}
-
-	res.writeHead(response.status, response.statusText, headers);
-
-	// `initialStream` is the stream we'll write the response to. It
-	// should end up as the first encoder, piping to the next encoder,
-	// and finally piping to the response:
-	//
-	// encoders[0] (initialStream) -> encoders[1] -> res
-	//
-	// Not using `pipeline(passThrough, ...encoders, res)` here as that
-	// gives a premature close error with server sent events. This also
-	// avoids creating an extra stream even when we're not encoding.
-	let initialStream: Writable = res;
-	for (let i = encoders.length - 1; i >= 0; i--) {
-		encoders[i].pipe(initialStream);
-		initialStream = encoders[i];
-	}
-
-	// Response body may be null if empty
-	if (response.body) {
-		for await (const chunk of response.body) {
-			if (chunk) initialStream.write(chunk);
-		}
-	}
-
-	initialStream.end();
-}
-
 function safeReadableStreamFrom(iterable: AsyncIterable<Uint8Array>) {
 	// Adapted from `undici`, catches errors from `next()` to avoid unhandled
 	// rejections from aborted request body streams:
@@ -910,6 +860,8 @@ export class Miniflare {
 	#runtimeDispatcher?: Dispatcher;
 	#proxyClient?: ProxyClient;
 
+	#structuredWorkerdLogs: boolean;
+
 	#cfObject?: Record<string, any> = {};
 
 	// Path to temporary directory for use as scratch space/"in-memory" Durable
@@ -965,6 +917,8 @@ export class Miniflare {
 		}
 
 		this.#log = this.#sharedOpts.core.log ?? new NoOpLog();
+		this.#structuredWorkerdLogs =
+			this.#sharedOpts.core.structuredWorkerdLogs ?? false;
 
 		// If we're in a JavaScript Debug terminal, Miniflare will send the inspector ports directly to VSCode for registration
 		// As such, we don't need our inspector proxy and in fact including it causes issue with multiple clients connected to the
@@ -1344,7 +1298,7 @@ export class Miniflare {
 				res.writeHead(404);
 				res.end();
 			} else {
-				await writeResponse(response, res);
+				await this.#writeResponse(response, res);
 			}
 		}
 
@@ -1402,7 +1356,7 @@ export class Miniflare {
 		}
 
 		// Otherwise, send the response as is (e.g. unauthorised)
-		await writeResponse(response, res);
+		await this.#writeResponse(response, res);
 	};
 
 	#handleLoopbackConnect = async (
@@ -1507,6 +1461,65 @@ export class Miniflare {
 			res.end("Bad Gateway");
 		});
 	};
+
+	async #writeResponse(response: Response, res: http.ServerResponse) {
+		// Convert headers into Node-friendly format
+		const headers: http.OutgoingHttpHeaders = {};
+		for (const entry of response.headers) {
+			const key = entry[0].toLowerCase();
+			const value = entry[1];
+			if (key === "set-cookie") {
+				headers[key] = response.headers.getSetCookie();
+			} else {
+				headers[key] = value;
+			}
+		}
+
+		// If a `Content-Encoding` header is set, we'll need to encode the body
+		// (likely only set by custom service bindings)
+		const encoding = headers["content-encoding"]?.toString();
+		const type = headers["content-type"]?.toString();
+		const encoders = _transformsForContentEncodingAndContentType(
+			encoding,
+			type
+		);
+		if (encoders.length > 0) {
+			// `Content-Length` if set, will be wrong as it's for the decoded length
+			delete headers["content-length"];
+		}
+
+		res.writeHead(response.status, response.statusText, headers);
+
+		// `initialStream` is the stream we'll write the response to. It
+		// should end up as the first encoder, piping to the next encoder,
+		// and finally piping to the response:
+		//
+		// encoders[0] (initialStream) -> encoders[1] -> res
+		//
+		// Not using `pipeline(passThrough, ...encoders, res)` here as that
+		// gives a premature close error with server sent events. This also
+		// avoids creating an extra stream even when we're not encoding.
+		let initialStream: Writable = res;
+		for (let i = encoders.length - 1; i >= 0; i--) {
+			encoders[i].pipe(initialStream);
+			initialStream = encoders[i];
+		}
+
+		// Response body may be null if empty
+		if (response.body) {
+			try {
+				for await (const chunk of response.body) {
+					if (chunk) initialStream.write(chunk);
+				}
+			} catch (error) {
+				this.#log.debug(
+					`Error writing response body, closing response early: ${error}`
+				);
+			}
+		}
+
+		initialStream.end();
+	}
 
 	async #getLoopbackPort(): Promise<number> {
 		// This function must be run with `#runtimeMutex` held
@@ -1806,6 +1819,7 @@ export class Miniflare {
 			for (let j = 0; j < directSockets.length; j++) {
 				const previousDirectSocket = previousDirectSockets[j];
 				const directSocket = directSockets[j];
+				const serviceName = directSocket.serviceName ?? workerName;
 				const entrypoint = directSocket.entrypoint ?? "default";
 				const name = getDirectSocketName(i, entrypoint);
 				const address = this.#getSocketAddress(
@@ -1822,7 +1836,7 @@ export class Miniflare {
 								name: `${RPC_PROXY_SERVICE_NAME}:${workerOpts.core.name}`,
 							}
 						: {
-								name: getUserServiceName(workerName),
+								name: getUserServiceName(serviceName),
 								entrypoint: entrypoint === "default" ? undefined : entrypoint,
 							};
 
@@ -1973,7 +1987,13 @@ export class Miniflare {
 					"Ensure wrapped bindings don't have bindings to themselves."
 			);
 		}
-		return { services: servicesArray, sockets, extensions };
+
+		return {
+			services: servicesArray,
+			sockets,
+			extensions,
+			structuredLogging: this.#structuredWorkerdLogs,
+		};
 	}
 
 	async #assembleAndUpdateConfig() {
@@ -2367,6 +2387,9 @@ export class Miniflare {
 		this.#sharedOpts = sharedOpts;
 		this.#workerOpts = workerOpts;
 		this.#log = this.#sharedOpts.core.log ?? this.#log;
+		this.#structuredWorkerdLogs =
+			this.#sharedOpts.core.structuredWorkerdLogs ??
+			this.#structuredWorkerdLogs;
 
 		await this.#devRegistry.updateRegistryPath(
 			sharedOpts.core.unsafeDevRegistryPath,
