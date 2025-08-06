@@ -385,6 +385,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20250803.0
         version: 4.20250803.0
+      miniflare:
+        specifier: workspace:*
+        version: link:../../packages/miniflare
       typescript:
         specifier: catalog:default
         version: 5.8.3
@@ -1059,6 +1062,9 @@ importers:
 
   fixtures/vitest-pool-workers-examples:
     devDependencies:
+      '@cloudflare/containers':
+        specifier: ^0.0.25
+        version: 0.0.25
       '@cloudflare/vitest-pool-workers':
         specifier: workspace:*
         version: link:../../packages/vitest-pool-workers
@@ -4208,6 +4214,9 @@ packages:
       '@cloudflare/style-const': ^5.7.2
       '@cloudflare/style-container': ^7.10.0
       react: ^15.0.0-0 || ^16.0.0-0 || ^17.0.0-0
+
+  '@cloudflare/containers@0.0.25':
+    resolution: {integrity: sha512-41sCUwGPhMMQI/kwksEZXNWe/GZdQoIy8QlgO4NAF68M4y4NN41IXeQ4n2jn4iJ7tHaV4noe7RI75b7T6h2JGg==}
 
   '@cloudflare/elements@3.0.3':
     resolution: {integrity: sha512-s6Sjh+IWJD0xn+4iy6hk/FYwY1gAFLWvpiWUmfDZWrQ09ZOTto8aRwpoEN7jUV6dZCPlCkUqMj4xKwRzDQ72FQ==}
@@ -14261,6 +14270,8 @@ snapshots:
       react: 18.3.1
     transitivePeerDependencies:
       - regenerator-runtime
+
+  '@cloudflare/containers@0.0.25': {}
 
   '@cloudflare/elements@3.0.3(@cloudflare/style-const@5.7.3(react@18.3.1))(@cloudflare/style-container@7.12.2(@cloudflare/style-const@5.7.3(react@18.3.1))(react@18.3.1))(react@18.3.1)':
     dependencies:
