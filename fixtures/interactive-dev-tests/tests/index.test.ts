@@ -377,6 +377,21 @@ baseDescribe.skipIf(process.platform !== "linux" && process.env.CI === "true")(
 					"Hello World! Have an env var! I'm an env var!"
 				);
 			}, WAITFOR_OPTIONS);
+			const output = wrangler.stdout;
+			// Extract the Docker image name from the output
+			const imageNameMatch = output.match(
+				/cloudflare-dev\/fixturetestcontainer:[a-f0-9]+/
+			);
+			expect(imageNameMatch).not.toBe(null);
+			const imageName = imageNameMatch![0];
+			expect(
+				JSON.parse(
+					execSync(
+						`docker image inspect ${imageName} --format "{{ json .RepoTags }}"`,
+						{ encoding: "utf8" }
+					)
+				).length
+			).toBeGreaterThanOrEqual(1);
 
 			fs.writeFileSync(
 				path.join(tmpDir, "container", "simple-node-app.js"),
@@ -412,6 +427,12 @@ baseDescribe.skipIf(process.platform !== "linux" && process.env.CI === "true")(
 				});
 				expect(await res.text()).toBe("Blah! I'm an env var!");
 			}, WAITFOR_OPTIONS);
+
+			// Verify that the old image tag has been deleted after rebuild
+			expect(() => {
+				execSync(`docker image inspect ${imageName}`, { encoding: "utf8" });
+			}).toThrow();
+
 			wrangler.pty.kill();
 		});
 
@@ -422,18 +443,18 @@ baseDescribe.skipIf(process.platform !== "linux" && process.env.CI === "true")(
 				path.join(tmpDir, "wrangler.jsonc"),
 			]);
 			await fetch(wrangler.url + "/start");
+
 			// wait container to be ready
 			await vi.waitFor(async () => {
-				const status = await fetch(wrangler.url + "/status");
-				expect(await status.json()).toBe(true);
+				const ids = getContainerIds();
+				expect(ids.length).toBe(1);
 			}, WAITFOR_OPTIONS);
-			const ids = getContainerIds();
-			expect(ids.length).toBe(1);
 
 			wrangler.pty.kill("SIGINT");
 			await new Promise<void>((resolve) => {
 				wrangler.pty.onExit(() => resolve());
 			});
+
 			await vi.waitFor(() => {
 				const remainingIds = getContainerIds();
 				expect(remainingIds.length).toBe(0);

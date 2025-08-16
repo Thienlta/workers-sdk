@@ -1,6 +1,6 @@
 {
 	"name": "@cloudflare/quick-edit",
-	"version": "0.4.0",
+	"version": "0.4.2",
 	"private": true,
 	"description": "VSCode for Web hosted for use in Cloudflare's Quick Editor",
 	"homepage": "https://github.com/cloudflare/workers-sdk#readme",
@@ -22,7 +22,7 @@
 	},
 	"devDependencies": {
 		"@cloudflare/workers-tsconfig": "workspace:*",
-		"@cloudflare/workers-types": "^4.20250712.0",
+		"@cloudflare/workers-types": "catalog:default",
 		"@types/node": "catalog:default",
 		"concurrently": "^8.2.2",
 		"esbuild": "catalog:default",

@@ -1,5 +1,17 @@
 # @cloudflare/quick-edit
 
+## 0.4.2
+
+### Patch Changes
+
+- [#10347](https://github.com/cloudflare/workers-sdk/pull/10347) [`2e5b880`](https://github.com/cloudflare/workers-sdk/commit/2e5b8802b3d9b9b8ff0d44c6b7a5d80e64f92313) Thanks [@petebacondarwin](https://github.com/petebacondarwin)! - bump the quick editor version to trigger a release
+
+## 0.4.1
+
+### Patch Changes
+
+- [#10338](https://github.com/cloudflare/workers-sdk/pull/10338) [`d419fd8`](https://github.com/cloudflare/workers-sdk/commit/d419fd8cbb946b00b1758869b073567f2bb3a740) Thanks [@CarmenPopoviciu](https://github.com/CarmenPopoviciu)! - Dummy changeset
+
 ## 0.4.0
 
 ### Minor Changes

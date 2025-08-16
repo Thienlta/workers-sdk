@@ -4,7 +4,7 @@ import { resolve } from "path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runWranglerDev } from "../../shared/src/run-wrangler-long-lived";
 
-describe("Local Browser", () => {
+describe.sequential("Local Browser", () => {
 	let ip: string,
 		port: number,
 		stop: (() => Promise<unknown>) | undefined,
@@ -61,6 +61,14 @@ describe("Local Browser", () => {
 				).resolves.toEqual(
 					`New paragraph text set by ${lib === "playwright" ? "Playwright" : "Puppeteer"}!`
 				);
+			});
+
+			it("Disconnect a browser, and check its session connection status", async () => {
+				await expect(
+					fetchText(
+						`http://${ip}:${port}/?lib=${lib}&url=https://example.com&action=disconnect`
+					)
+				).resolves.toEqual(`Browser disconnected`);
 			});
 		});
 	}
