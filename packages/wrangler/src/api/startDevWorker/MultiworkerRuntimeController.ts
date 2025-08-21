@@ -178,13 +178,19 @@ export class MultiworkerRuntimeController extends LocalRuntimeController {
 				logger.log(chalk.dim("⎔ Container image(s) ready"));
 			}
 
-			const { options } = await MF.buildMiniflareOptions(
+			const options = await MF.buildMiniflareOptions(
 				this.#log,
 				await convertToConfigBundle(data),
 				this.#proxyToUserWorkerAuthenticationSecret,
 				this.#remoteProxySessionsData.get(data.config.name)?.session
 					?.remoteProxyConnectionString,
-				!!experimentalRemoteBindings
+				!!experimentalRemoteBindings,
+				(registry) => {
+					this.emitDevRegistryUpdateEvent({
+						type: "devRegistryUpdate",
+						registry,
+					});
+				}
 			);
 
 			this.#options.set(data.config.name, {
@@ -245,10 +251,6 @@ export class MultiworkerRuntimeController extends LocalRuntimeController {
 						liveReload: data.config.dev?.liveReload,
 						proxyLogsToController:
 							data.bundle.entry.format === "service-worker",
-
-						// It's not possible to bind to Workers in a multi-worker setup across the dev registry, so these are intentionally left empty
-						internalDurableObjects: [],
-						entrypointAddresses: {},
 					},
 				});
 			}

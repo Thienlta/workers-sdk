@@ -5,7 +5,7 @@ import { UserError } from "../errors";
 import { getFlag } from "../experimental-flags";
 import { logger } from "../logger";
 import type { CfTailConsumer, CfWorkerInit } from "../deployment-bundle/worker";
-import type { WorkerRegistry } from "../dev-registry";
+import type { WorkerRegistry } from "miniflare";
 
 export const friendlyBindingNames: Record<
 	keyof CfWorkerInit["bindings"],
@@ -510,10 +510,10 @@ export function printBindings(
 	if (unsafe?.bindings !== undefined && unsafe.bindings.length > 0) {
 		output.push(
 			...unsafe.bindings.map(({ name, type }) => ({
-				name: type,
+				name,
 				type: friendlyBindingNames.unsafe,
-				value: name,
-				mode: getMode({ isSimulatedLocally: false }),
+				value: type,
+				mode: getMode({ isSimulatedLocally: undefined }),
 			}))
 		);
 	}
@@ -728,7 +728,7 @@ export function printBindings(
 	if (hasConnectionStatus) {
 		logger.once.info(
 			dim(
-				`\nService bindings, Durable Object bindings, and Tail consumers connect to other \`wrangler dev\` processes running locally, with their connection status indicated by ${chalk.green("[connected]")} or ${chalk.red("[not connected]")}. For more details, refer to https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/#local-development\n`
+				`\nService bindings, Durable Object bindings, and Tail consumers connect to other wrangler or vite dev processes running locally, with their connection status indicated by ${chalk.green("[connected]")} or ${chalk.red("[not connected]")}. For more details, refer to https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/#local-development\n`
 			)
 		);
 	}
