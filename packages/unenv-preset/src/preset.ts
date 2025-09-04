@@ -69,6 +69,7 @@ export function getCloudflarePreset({
 	};
 
 	const httpOverrides = getHttpOverrides(compat);
+	const http2Overrides = getHttp2Overrides(compat);
 	const osOverrides = getOsOverrides(compat);
 	const fsOverrides = getFsOverrides(compat);
 
@@ -76,6 +77,7 @@ export function getCloudflarePreset({
 	const dynamicNativeModules = [
 		...nativeModules,
 		...httpOverrides.nativeModules,
+		...http2Overrides.nativeModules,
 		...osOverrides.nativeModules,
 		...fsOverrides.nativeModules,
 	];
@@ -84,6 +86,7 @@ export function getCloudflarePreset({
 	const dynamicHybridModules = [
 		...hybridModules,
 		...httpOverrides.hybridModules,
+		...http2Overrides.hybridModules,
 		...osOverrides.hybridModules,
 		...fsOverrides.hybridModules,
 	];
@@ -177,8 +180,6 @@ function getHttpOverrides({
 		(httpServerEnabledByFlag || httpServerEnabledByDate) &&
 		!httpServerDisabledByFlag;
 
-	// Override unenv base aliases with native and hybrid modules
-	// `node:https` is fully implemented by workerd if both flags are enabled
 	return {
 		nativeModules: [
 			"_http_agent",
@@ -186,10 +187,50 @@ function getHttpOverrides({
 			"_http_common",
 			"_http_incoming",
 			"_http_outgoing",
-			...(httpServerEnabled ? ["_http_server", "https"] : []),
+			// `_http_server` can only be imported when the server flag is set
+			// See https://github.com/cloudflare/workerd/blob/56efc04/src/workerd/api/node/node.h#L102-L106
+			...(httpServerEnabled ? ["_http_server"] : []),
+			"http",
+			"https",
 		],
-		hybridModules: httpServerEnabled ? ["http"] : ["http", "https"],
+		hybridModules: [],
 	};
+}
+
+/**
+ * Returns the overrides for the `node:http2` module (unenv or workerd)
+ *
+ * The native http2 implementation:
+ * - is enabled starting from 2025-09-01
+ * - can be enabled with the "enable_nodejs_http2_module" flag
+ * - can be disabled with the "disable_nodejs_http2_module" flag
+ */
+function getHttp2Overrides({
+	compatibilityDate,
+	compatibilityFlags,
+}: {
+	compatibilityDate: string;
+	compatibilityFlags: string[];
+}): { nativeModules: string[]; hybridModules: string[] } {
+	const disabledByFlag = compatibilityFlags.includes(
+		"disable_nodejs_http2_module"
+	);
+	const enabledByFlag = compatibilityFlags.includes(
+		"enable_nodejs_http2_module"
+	);
+	const enabledByDate = compatibilityDate >= "2025-09-01";
+
+	const enabled = (enabledByFlag || enabledByDate) && !disabledByFlag;
+
+	return enabled
+		? {
+				nativeModules: ["http2"],
+				hybridModules: [],
+			}
+		: {
+				nativeModules: [],
+				hybridModules: [],
+			};
 }
 
 /**
