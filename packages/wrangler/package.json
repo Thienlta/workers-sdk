@@ -72,8 +72,8 @@
 		"esbuild": "catalog:default",
 		"miniflare": "workspace:*",
 		"path-to-regexp": "6.3.0",
-		"unenv": "2.0.0-rc.20",
-		"workerd": "1.20250902.0"
+		"unenv": "2.0.0-rc.21",
+		"workerd": "1.20250906.0"
 	},
 	"devDependencies": {
 		"@aws-sdk/client-s3": "^3.721.0",
