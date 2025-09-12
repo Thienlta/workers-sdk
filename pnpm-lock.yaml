@@ -174,24 +174,6 @@ importers:
         specifier: workspace:*
         version: link:../../packages/wrangler
 
-  fixtures/ai-app:
-    devDependencies:
-      '@cloudflare/workers-tsconfig':
-        specifier: workspace:^
-        version: link:../../packages/workers-tsconfig
-      typescript:
-        specifier: catalog:default
-        version: 5.8.3
-      undici:
-        specifier: catalog:default
-        version: 7.14.0
-      vitest:
-        specifier: catalog:default
-        version: 3.2.3(@types/debug@4.1.12)(@types/node@20.19.9)(@vitest/ui@3.2.3)(jiti@2.4.2)(lightningcss@1.29.2)(msw@2.4.3(typescript@5.8.3))(supports-color@9.2.2)
-      wrangler:
-        specifier: workspace:*
-        version: link:../../packages/wrangler
-
   fixtures/browser-rendering:
     devDependencies:
       '@cloudflare/playwright':
@@ -3279,6 +3261,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: catalog:default
         version: 4.20250906.0
+      '@cloudflare/workflows-shared':
+        specifier: workspace:*
+        version: link:../workflows-shared
       '@types/node':
         specifier: ^20.19.9
         version: 20.19.9
@@ -3530,8 +3515,8 @@ importers:
         specifier: ^2.5.0
         version: 2.5.0
       itty-time:
-        specifier: ^1.0.6
-        version: 1.0.6
+        specifier: ^2.0.2
+        version: 2.0.2
       mime:
         specifier: ^3.0.0
         version: 3.0.0
@@ -10102,6 +10087,9 @@ packages:
 
   itty-time@1.0.6:
     resolution: {integrity: sha512-+P8IZaLLBtFv8hCkIjcymZOp4UJ+xW6bSlQsXGqrkmJh7vSiMFSlNne0mCYagEE0N7HDNR5jJBRxwN0oYv61Rw==}
+
+  itty-time@2.0.2:
+    resolution: {integrity: sha512-95U9Xo3Qggz/e82ewZQJw8x76HgiMvbrijzoPy6nCTae4FZEwbcVJgrB57Kvddf8Q5pQdgJKTX6euFJpDr6Low==}
 
   jackspeak@3.4.3:
     resolution: {integrity: sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==}
@@ -20576,6 +20564,8 @@ snapshots:
   itty-router@4.0.17: {}
 
   itty-time@1.0.6: {}
+
+  itty-time@2.0.2: {}
 
   jackspeak@3.4.3:
     dependencies:

@@ -1443,6 +1443,16 @@ function normalizeAndValidateEnvironment(
 			validateBindingArray(envName, validateHelloWorldBinding),
 			[]
 		),
+		ratelimits: notInheritable(
+			diagnostics,
+			topLevelEnv,
+			rawConfig,
+			rawEnv,
+			envName,
+			"ratelimits",
+			validateBindingArray(envName, validateRateLimitBinding),
+			[]
+		),
 		version_metadata: notInheritable(
 			diagnostics,
 			topLevelEnv,
@@ -2066,9 +2076,9 @@ const validateWorkflowBinding: ValidatorFn = (diagnostics, field, value) => {
 		isValid = false;
 	}
 
-	if (!isOptionalProperty(value, "experimental_remote", "boolean")) {
+	if (!isOptionalProperty(value, "remote", "boolean")) {
 		diagnostics.errors.push(
-			`"${field}" bindings should, optionally, have a boolean "experimental_remote" field but got ${JSON.stringify(
+			`"${field}" bindings should, optionally, have a boolean "remote" field but got ${JSON.stringify(
 				value
 			)}.`
 		);
@@ -2080,7 +2090,7 @@ const validateWorkflowBinding: ValidatorFn = (diagnostics, field, value) => {
 		"name",
 		"class_name",
 		"script_name",
-		"experimental_remote",
+		"remote",
 	]);
 
 	return isValid;
@@ -2269,7 +2279,7 @@ const validateNamedSimpleBinding =
 
 		validateAdditionalProperties(diagnostics, field, Object.keys(value), [
 			"binding",
-			"experimental_remote",
+			"remote",
 		]);
 
 		return isValid;
@@ -2894,7 +2904,7 @@ const validateKVBinding: ValidatorFn = (diagnostics, field, value) => {
 		"binding",
 		"id",
 		"preview_id",
-		"experimental_remote",
+		"remote",
 	]);
 
 	return isValid;
@@ -2954,7 +2964,7 @@ const validateSendEmailBinding: ValidatorFn = (diagnostics, field, value) => {
 		"destination_address",
 		"name",
 		"binding",
-		"experimental_remote",
+		"remote",
 	]);
 
 	return isValid;
@@ -2973,7 +2983,7 @@ const validateQueueBinding: ValidatorFn = (diagnostics, field, value) => {
 			"binding",
 			"queue",
 			"delivery_delay",
-			"experimental_remote",
+			"remote",
 		])
 	) {
 		return false;
@@ -3105,7 +3115,7 @@ const validateR2Binding: ValidatorFn = (diagnostics, field, value) => {
 		"bucket_name",
 		"preview_bucket_name",
 		"jurisdiction",
-		"experimental_remote",
+		"remote",
 	]);
 
 	return isValid;
@@ -3166,7 +3176,7 @@ const validateD1Binding: ValidatorFn = (diagnostics, field, value) => {
 		"migrations_dir",
 		"migrations_table",
 		"preview_database_id",
-		"experimental_remote",
+		"remote",
 	]);
 
 	return isValid;
@@ -3205,7 +3215,7 @@ const validateVectorizeBinding: ValidatorFn = (diagnostics, field, value) => {
 	validateAdditionalProperties(diagnostics, field, Object.keys(value), [
 		"binding",
 		"index_name",
-		"experimental_remote",
+		"remote",
 	]);
 
 	return isValid;
@@ -3569,7 +3579,7 @@ const validateMTlsCertificateBinding: ValidatorFn = (
 	validateAdditionalProperties(diagnostics, field, Object.keys(value), [
 		"binding",
 		"certificate_id",
-		"experimental_remote",
+		"remote",
 	]);
 
 	if (!isRemoteValid(value, field, diagnostics)) {
@@ -3750,7 +3760,7 @@ const validatePipelineBinding: ValidatorFn = (diagnostics, field, value) => {
 	validateAdditionalProperties(diagnostics, field, Object.keys(value), [
 		"binding",
 		"pipeline",
-		"experimental_remote",
+		"remote",
 	]);
 
 	return isValid;
@@ -3832,6 +3842,84 @@ const validateHelloWorldBinding: ValidatorFn = (diagnostics, field, value) => {
 	validateAdditionalProperties(diagnostics, field, Object.keys(value), [
 		"binding",
 		"enable_timer",
+	]);
+
+	return isValid;
+};
+
+const validateRateLimitBinding: ValidatorFn = (diagnostics, field, value) => {
+	if (typeof value !== "object" || value === null) {
+		diagnostics.errors.push(
+			`"ratelimits" bindings should be objects, but got ${JSON.stringify(value)}`
+		);
+		return false;
+	}
+	let isValid = true;
+	if (!isRequiredProperty(value, "name", "string")) {
+		diagnostics.errors.push(
+			`"${field}" bindings must have a string "name" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	}
+	if (!isRequiredProperty(value, "namespace_id", "string")) {
+		diagnostics.errors.push(
+			`"${field}" bindings must have a string "namespace_id" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	}
+
+	if (
+		!hasProperty(value, "simple") ||
+		typeof value.simple !== "object" ||
+		value.simple === null
+	) {
+		diagnostics.errors.push(
+			`"${field}" bindings must have a "simple" configuration object but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	} else {
+		if (!isRequiredProperty(value.simple, "limit", "number")) {
+			diagnostics.errors.push(
+				`"${field}" bindings "simple.limit" must be a number but got ${JSON.stringify(
+					value.simple
+				)}.`
+			);
+			isValid = false;
+		}
+		if (!isRequiredProperty(value.simple, "period", "number")) {
+			diagnostics.errors.push(
+				`"${field}" bindings "simple.period" is required and must be a number but got ${JSON.stringify(
+					value.simple
+				)}.`
+			);
+			isValid = false;
+		} else if (![10, 60].includes(value.simple.period)) {
+			diagnostics.errors.push(
+				`"${field}" bindings "simple.period" must be either 10 or 60 but got ${JSON.stringify(
+					value.simple.period
+				)}.`
+			);
+			isValid = false;
+		}
+
+		validateAdditionalProperties(
+			diagnostics,
+			`${field}.simple`,
+			Object.keys(value.simple),
+			["limit", "period"]
+		);
+	}
+
+	validateAdditionalProperties(diagnostics, field, Object.keys(value), [
+		"name",
+		"namespace_id",
+		"simple",
 	]);
 
 	return isValid;
@@ -4196,9 +4284,9 @@ function isRemoteValid(
 	fieldPath: string,
 	diagnostics: Diagnostics
 ) {
-	if (!isOptionalProperty(targetObject, "experimental_remote", "boolean")) {
+	if (!isOptionalProperty(targetObject, "remote", "boolean")) {
 		diagnostics.errors.push(
-			`"${fieldPath}" should, optionally, have a boolean "experimental_remote" field but got ${JSON.stringify(
+			`"${fieldPath}" should, optionally, have a boolean "remote" field but got ${JSON.stringify(
 				targetObject
 			)}.`
 		);
