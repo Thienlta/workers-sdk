@@ -12,11 +12,13 @@ import type {
 import type {
 	CfAIBinding,
 	CfAnalyticsEngineDataset,
+	CfBrowserBinding,
 	CfD1Database,
 	CfDispatchNamespace,
 	CfDurableObject,
 	CfHelloWorld,
 	CfHyperdrive,
+	CfImagesBinding,
 	CfKvNamespace,
 	CfLogfwdrBinding,
 	CfModule,
@@ -32,6 +34,7 @@ import type {
 	CfTailConsumer,
 	CfUnsafe,
 	CfVectorize,
+	CfWorkerLoader,
 	CfWorkflow,
 } from "../../deployment-bundle/worker";
 import type { CfAccount } from "../../dev/create-worker-preview";
@@ -282,9 +285,9 @@ export type Binding =
 	| ({ type: "send_email" } & NameOmit<CfSendEmailBindings>)
 	| { type: "wasm_module"; source: BinaryFile }
 	| { type: "text_blob"; source: File }
-	| { type: "browser" }
+	| ({ type: "browser" } & BindingOmit<CfBrowserBinding>)
 	| ({ type: "ai" } & BindingOmit<CfAIBinding>)
-	| { type: "images" }
+	| ({ type: "images" } & BindingOmit<CfImagesBinding>)
 	| { type: "version_metadata" }
 	| { type: "data_blob"; source: BinaryFile }
 	| ({ type: "durable_object_namespace" } & NameOmit<CfDurableObject>)
@@ -304,6 +307,7 @@ export type Binding =
 	| ({ type: "logfwdr" } & NameOmit<CfLogfwdrBinding>)
 	| ({ type: "unsafe_hello_world" } & BindingOmit<CfHelloWorld>)
 	| ({ type: "ratelimit" } & NameOmit<CfRateLimit>)
+	| ({ type: "worker_loader" } & BindingOmit<CfWorkerLoader>)
 	| { type: `unsafe_${string}` }
 	| { type: "assets" };
 
