@@ -19,6 +19,16 @@ import {
 } from "./wrangler";
 import type { WranglerCommandOptions } from "./wrangler";
 
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+export function importWrangler(): Promise<typeof import("../../src/cli")> {
+	return import(WRANGLER_IMPORT.href);
+}
+
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+export function importMiniflare(): Promise<typeof import("miniflare")> {
+	return import(MINIFLARE_IMPORT.href);
+}
+
 /**
  * Use this class in your e2e tests to create a temp directory, seed it with files
  * and then run various Wrangler commands.
@@ -40,16 +50,6 @@ export class WranglerE2ETestHelper {
 
 	async removeFiles(files: string[]) {
 		await removeFiles(this.tmpPath, files);
-	}
-
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	importWrangler(): Promise<typeof import("../../src/cli")> {
-		return import(WRANGLER_IMPORT.href);
-	}
-
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	importMiniflare(): Promise<typeof import("miniflare")> {
-		return import(MINIFLARE_IMPORT.href);
 	}
 
 	runLongLived(
@@ -76,7 +76,6 @@ export class WranglerE2ETestHelper {
 		wranglerCommand: string,
 		{ cwd = this.tmpPath, ...options }: WranglerCommandOptions = {}
 	) {
-		console.log(`Running wrangler command: ${wranglerCommand}`);
 		return runWrangler(wranglerCommand, { cwd, ...options });
 	}
 
@@ -289,5 +288,46 @@ export class WranglerE2ETestHelper {
 		} else {
 			return { deployedUrl, stdout, cleanup };
 		}
+	}
+
+	async tunnel(): Promise<string> {
+		const Cloudflare = (await import("cloudflare")).default;
+
+		const name = generateResourceName("tunnel");
+		const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+		if (!accountId) {
+			throw new Error("CLOUDFLARE_ACCOUNT_ID environment variable is required");
+		}
+
+		// Create Cloudflare client directly
+		const client = new Cloudflare({
+			apiToken: process.env.CLOUDFLARE_API_TOKEN,
+		});
+
+		// Create tunnel via Cloudflare SDK
+		const tunnel = await client.zeroTrust.tunnels.cloudflared.create({
+			account_id: accountId,
+			name,
+			config_src: "cloudflare",
+		});
+
+		if (!tunnel.id) {
+			throw new Error("Failed to create tunnel: tunnel ID is undefined");
+		}
+
+		const tunnelId = tunnel.id;
+
+		onTestFinished(async () => {
+			try {
+				await client.zeroTrust.tunnels.cloudflared.delete(tunnelId, {
+					account_id: accountId,
+				});
+			} catch (error) {
+				// Ignore deletion errors in cleanup
+				console.warn(`Failed to delete tunnel ${tunnelId}:`, error);
+			}
+		});
+
+		return tunnelId;
 	}
 }

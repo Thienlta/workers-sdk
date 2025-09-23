@@ -2,12 +2,18 @@ import path from "node:path";
 import dedent from "ts-dedent";
 import { beforeEach, describe, expect, it, onTestFinished } from "vitest";
 import { CLOUDFLARE_ACCOUNT_ID } from "../helpers/account-id";
-import { WranglerE2ETestHelper } from "../helpers/e2e-wrangler-test";
+import {
+	importMiniflare,
+	importWrangler,
+	WranglerE2ETestHelper,
+} from "../helpers/e2e-wrangler-test";
 import { generateResourceName } from "../helpers/generate-resource-name";
-import type { startRemoteProxySession } from "../../src/api";
 import type { RawConfig } from "../../src/config";
 import type { RemoteProxyConnectionString, WorkerOptions } from "miniflare";
 import type { ExpectStatic } from "vitest";
+
+const { startRemoteProxySession } = await importWrangler();
+const { Miniflare } = await importMiniflare();
 
 type TestCase<T = void> = {
 	name: string;
@@ -379,6 +385,58 @@ const testCases: TestCase<string>[] = [
 			),
 		],
 	},
+	/* 	{
+		// Enable post announcement
+		name: "VPC Service",
+		scriptPath: "vpc-service.js",
+		setup: async (helper) => {
+			const serviceName = generateResourceName();
+
+			// Create a real Cloudflare tunnel for testing
+			const tunnelId = await helper.tunnel();
+
+			const output = await helper.run(
+				`wrangler vpc service create ${serviceName} --type http --ipv4 10.0.0.1 --http-port 8080 --tunnel-id ${tunnelId}`
+			);
+
+			// Extract service_id from output
+			const match = output.stdout.match(
+				/Created VPC service:\s+(?<serviceId>[\w-]+)/
+			);
+			const serviceId = match?.groups?.serviceId;
+			assert(
+				serviceId,
+				"Failed to extract service ID from VPC service creation output"
+			);
+
+			onTestFinished(async () => {
+				await helper.run(`wrangler vpc service delete ${serviceId}`);
+			});
+
+			return serviceId;
+		},
+		remoteProxySessionConfig: (serviceId) => [
+			{
+				VPC_SERVICE: {
+					type: "vpc_service",
+					service_id: serviceId,
+				},
+			},
+		],
+		miniflareConfig: (connection, serviceId) => ({
+			vpcServices: {
+				VPC_SERVICE: {
+					service_id: serviceId,
+					remoteProxyConnectionString: connection,
+				},
+			},
+		}),
+		matches: [
+			// Since we're using a real tunnel but no actual network connectivity, Iris will report back an error
+			// but this is considered an effective test for wrangler and vpc service bindings
+			expect.stringMatching(/CONNECT failed: 503 Service Unavailable/),
+		],
+	}, */
 ];
 
 const mtlsTest: TestCase<{ certificateId: string; workerName: string }> = {
@@ -470,8 +528,6 @@ async function runTestCase<T>(
 	helper: WranglerE2ETestHelper,
 	{ disableRemoteBindings } = { disableRemoteBindings: false }
 ) {
-	const { startRemoteProxySession } = await helper.importWrangler();
-	const { Miniflare } = await helper.importMiniflare();
 	await helper.seed(path.resolve(__dirname, "./workers"));
 	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 	const setupResult = (await testCase.setup?.(helper))!;
