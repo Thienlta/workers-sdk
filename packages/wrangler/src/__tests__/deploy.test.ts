@@ -464,13 +464,16 @@ describe("deploy", () => {
 		).rejects.toThrowErrorMatchingInlineSnapshot(
 			`[APIError: A request to the Cloudflare API (/accounts/some-account-id/workers/services/test-name) failed.]`
 		);
-		expect(std.out).toMatchInlineSnapshot(`
-			"
-			[31mX [41;31m[[41;97mERROR[41;31m][0m [1mA request to the Cloudflare API (/accounts/some-account-id/workers/services/test-name) failed.[0m
+		expect(std).toMatchInlineSnapshot(`
+			Object {
+			  "debug": "",
+			  "err": "[31mX [41;31m[[41;97mERROR[41;31m][0m [1mA request to the Cloudflare API (/accounts/some-account-id/workers/services/test-name) failed.[0m
 
 			  Authentication error [code: 10000]
 
-
+			",
+			  "info": "",
+			  "out": "
 			📎 It looks like you are authenticating Wrangler via a custom API token set in an environment variable.
 			Please ensure it has the correct permissions for this operation.
 
@@ -486,7 +489,9 @@ describe("deploy", () => {
 			├─┼─┤
 			│ Account Three │ account-3 │
 			└─┴─┘
-			🔓 To see token permissions visit https://dash.cloudflare.com/profile/api-tokens."
+			🔓 To see token permissions visit https://dash.cloudflare.com/profile/api-tokens.",
+			  "warn": "",
+			}
 		`);
 	});
 
@@ -11381,11 +11386,7 @@ export default{
 			expect(std).toMatchInlineSnapshot(`
 				Object {
 				  "debug": "",
-				  "err": "",
-				  "info": "",
-				  "out": "Total Upload: xx KiB / gzip: xx KiB
-
-				[31mX [41;31m[[41;97mERROR[41;31m][0m [1mA request to the Cloudflare API (/accounts/some-account-id/workers/scripts/test-name/versions) failed.[0m
+				  "err": "[31mX [41;31m[[41;97mERROR[41;31m][0m [1mA request to the Cloudflare API (/accounts/some-account-id/workers/scripts/test-name/versions) failed.[0m
 
 				  Worker Startup Timed out. This could be due to script exceeding size limits or expensive code in
 				  the global scope. [code: 11337]
@@ -11393,6 +11394,9 @@ export default{
 				  If you think this is a bug, please open an issue at:
 				  [4mhttps://github.com/cloudflare/workers-sdk/issues/new/choose[0m
 
+				",
+				  "info": "",
+				  "out": "Total Upload: xx KiB / gzip: xx KiB
 				",
 				  "warn": "",
 				}
@@ -11469,9 +11473,6 @@ export default{
 				  If these are unnecessary, consider removing them
 
 
-				",
-				  "info": "",
-				  "out": "Total Upload: xx KiB / gzip: xx KiB
 
 				[31mX [41;31m[[41;97mERROR[41;31m][0m [1mA request to the Cloudflare API (/accounts/some-account-id/workers/scripts/test-name/versions) failed.[0m
 
@@ -11480,6 +11481,9 @@ export default{
 				  If you think this is a bug, please open an issue at:
 				  [4mhttps://github.com/cloudflare/workers-sdk/issues/new/choose[0m
 
+				",
+				  "info": "",
+				  "out": "Total Upload: xx KiB / gzip: xx KiB
 				",
 				  "warn": "",
 				}
@@ -11544,9 +11548,6 @@ export default{
 				  .wrangler/tmp/startup-profile-<HASH>/worker.cpuprofile - load it into the Chrome DevTools profiler
 				  (or directly in VSCode) to view a flamegraph.
 
-				",
-				  "info": "",
-				  "out": "Total Upload: xx KiB / gzip: xx KiB
 
 				[31mX [41;31m[[41;97mERROR[41;31m][0m [1mA request to the Cloudflare API (/accounts/some-account-id/workers/scripts/test-name/versions) failed.[0m
 
@@ -11555,6 +11556,9 @@ export default{
 				  If you think this is a bug, please open an issue at:
 				  [4mhttps://github.com/cloudflare/workers-sdk/issues/new/choose[0m
 
+				",
+				  "info": "",
+				  "out": "Total Upload: xx KiB / gzip: xx KiB
 				",
 				  "warn": "",
 				}
@@ -14020,6 +14024,99 @@ export default{
 
 			return normalizedLog;
 		}
+	});
+
+	describe("with strict mode enabled", () => {
+		it("should error if there are remote config difference (with --x-remote-diff-check) in non-interactive mode", async () => {
+			setIsTTY(false);
+
+			writeWorkerSource();
+			mockGetServiceByName("test-name", "production", "dash");
+			writeWranglerConfig(
+				{
+					compatibility_date: "2024-04-24",
+					main: "./index.js",
+				},
+				"./wrangler.json"
+			);
+			mockSubDomainRequest();
+			mockUploadWorkerRequest();
+			mockGetServiceBindings("test-name", []);
+			mockGetServiceRoutes("test-name", []);
+			mockGetServiceCustomDomainRecords([]);
+			mockGetServiceSubDomainData("test-name", {
+				enabled: true,
+				previews_enabled: false,
+			});
+			mockGetServiceSchedules("test-name", { schedules: [] });
+			mockGetServiceMetadata("test-name", {
+				created_on: "2025-08-07T09:34:47.846308Z",
+				modified_on: "2025-08-08T10:48:12.688997Z",
+				script: {
+					created_on: "2025-08-07T09:34:47.846308Z",
+					modified_on: "2025-08-08T10:48:12.688997Z",
+					id: "silent-firefly-dbe3",
+					observability: { enabled: true, head_sampling_rate: 1 },
+					compatibility_date: "2024-04-24",
+				},
+			} as unknown as ServiceMetadataRes["default_environment"]);
+
+			await runWrangler("deploy --x-remote-diff-check --strict");
+
+			expect(std.warn).toMatchInlineSnapshot(`
+				"[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mThe local configuration being used (generated from your local configuration file) differs from the remote configuration of your Worker set via the Cloudflare Dashboard:[0m
+
+				        \\"bindings\\": []
+				      },
+				      \\"observability\\": {
+				  -     \\"enabled\\": true,
+				  +     \\"enabled\\": false,
+				        \\"head_sampling_rate\\": 1,
+				        \\"logs\\": {
+				          \\"enabled\\": false,
+
+				  Deploying the Worker will override the remote configuration with your local one.
+
+				"
+			`);
+
+			expect(std.err).toMatchInlineSnapshot(`
+				"[31mX [41;31m[[41;97mERROR[41;31m][0m [1mAborting the deployment operation because of conflicts. To override and deploy anyway remove the \`--strict\` flag[0m
+
+				"
+			`);
+			// note: the test and the wrangler run share the same process, and we expect the deploy command (which fails)
+			//       to set a non-zero exit code
+			expect(process.exitCode).not.toBe(0);
+		});
+
+		it("should error when worker was last deployed from api", async () => {
+			setIsTTY(false);
+
+			msw.use(...mswSuccessDeploymentScriptAPI);
+			writeWranglerConfig();
+			writeWorkerSource();
+			mockSubDomainRequest();
+			mockUploadWorkerRequest();
+
+			await runWrangler("deploy ./index --strict");
+
+			expect(std.warn).toMatchInlineSnapshot(`
+			"[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mYou are about to publish a Workers Service that was last updated via the script API.[0m
+
+			  Edits that have been made via the script API will be overridden by your local code and config.
+
+			"
+			`);
+			expect(std.err).toMatchInlineSnapshot(`
+				"[31mX [41;31m[[41;97mERROR[41;31m][0m [1mAborting the deployment operation because of conflicts. To override and deploy anyway remove the \`--strict\` flag[0m
+
+				"
+			`);
+			// note: the test and the wrangler run share the same process, and we expect the deploy command (which fails)
+			//       to set a non-zero exit code
+			expect(process.exitCode).not.toBe(0);
+		});
 	});
 });
 
