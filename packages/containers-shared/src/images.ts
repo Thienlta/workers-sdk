@@ -98,7 +98,7 @@ export async function prepareContainerImagesForDev(args: {
 			if (!isCloudflareRegistryLink(options.image_uri)) {
 				throw new UserError(
 					`Image "${options.image_uri}" is a registry link but does not point to the Cloudflare container registry.\n` +
-						`To use an existing image from another repository, see https://developers.cloudflare.com/containers/image-management/#using-existing-images`
+						`To use an existing image from another repository, see https://developers.cloudflare.com/containers/platform-details/image-management/#using-pre-built-container-images`
 				);
 			}
 			const pull = await pullImage(dockerPath, options);
@@ -143,9 +143,20 @@ export function resolveImageName(accountId: string, image: string): string {
 	if (url.hostname !== getCloudflareContainerRegistry()) {
 		return image;
 	}
-
 	// is managed registry and has the account id, passthrough
 	if (url.pathname.startsWith(`/${accountId}`)) {
+		return image;
+	}
+	// check if already looks like it has an account id (32 char hex string)
+	const accountIdPattern = /^\/([a-f0-9]{32})\//;
+	const match = accountIdPattern.exec(url.pathname);
+	if (match) {
+		const foundAccountId = match[1];
+		if (foundAccountId !== accountId) {
+			throw new Error(
+				`Image "${image}" does not belong to your account\nImage appears to belong to account: "${foundAccountId}"\nCurrent account: "${accountId}"`
+			);
+		}
 		return image;
 	}
 
