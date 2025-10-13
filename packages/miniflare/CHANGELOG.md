@@ -1,5 +1,47 @@
 # miniflare
 
+## 4.20251008.0
+
+### Patch Changes
+
+- [#10917](https://github.com/cloudflare/workers-sdk/pull/10917) [`42e256f`](https://github.com/cloudflare/workers-sdk/commit/42e256f2ec97a9ea805949e491ca59834003378a) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore: update dependencies of "miniflare" package
+
+  The following dependency versions have been updated:
+
+  | Dependency | From         | To           |
+  | ---------- | ------------ | ------------ |
+  | workerd    | 1.20251004.0 | 1.20251008.0 |
+
+- [#10686](https://github.com/cloudflare/workers-sdk/pull/10686) [`4462bc1`](https://github.com/cloudflare/workers-sdk/commit/4462bc1f5b0940b7e69e300b353290fc14745052) Thanks [@alsuren](https://github.com/alsuren)! - Document that dumpSql is shared with d1-worker, and incorporate some D1 internal stats gathering machinery (which is currently unused by miniflare)
+
+## 4.20251004.0
+
+### Patch Changes
+
+- [#10858](https://github.com/cloudflare/workers-sdk/pull/10858) [`51f9dc1`](https://github.com/cloudflare/workers-sdk/commit/51f9dc113487e0000a6ecc1e45f6e8e3e9c5a9a7) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore: update dependencies of "miniflare" package
+
+  The following dependency versions have been updated:
+
+  | Dependency | From         | To           |
+  | ---------- | ------------ | ------------ |
+  | workerd    | 1.20251001.0 | 1.20251004.0 |
+
+- [#10856](https://github.com/cloudflare/workers-sdk/pull/10856) [`1334102`](https://github.com/cloudflare/workers-sdk/commit/1334102e35d69a70181c2832b94df2d77b25a279) Thanks [@anonrig](https://github.com/anonrig)! - Removes unnecessary calls to "node:os"
+
+## 4.20251001.0
+
+### Patch Changes
+
+- [#10834](https://github.com/cloudflare/workers-sdk/pull/10834) [`c8d5282`](https://github.com/cloudflare/workers-sdk/commit/c8d5282781adf527ad4acfe74001e93affd7af34) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore: update dependencies of "miniflare" package
+
+  The following dependency versions have been updated:
+
+  | Dependency | From         | To           |
+  | ---------- | ------------ | ------------ |
+  | workerd    | 1.20250927.0 | 1.20251001.0 |
+
+- [#10673](https://github.com/cloudflare/workers-sdk/pull/10673) [`bffd2a9`](https://github.com/cloudflare/workers-sdk/commit/bffd2a9c93455f0d23d5a70d587bb851d1031e59) Thanks [@jamesopstad](https://github.com/jamesopstad)! - Send a 404 response for unimplemented `/cdn-cgi/handler/` routes.
+
 ## 4.20250927.0
 
 ### Patch Changes

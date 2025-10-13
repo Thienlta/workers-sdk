@@ -1,5 +1,74 @@
 # create-cloudflare
 
+## 2.52.3
+
+### Patch Changes
+
+- [#10875](https://github.com/cloudflare/workers-sdk/pull/10875) [`63ddc27`](https://github.com/cloudflare/workers-sdk/commit/63ddc279aa9935f53772c9255624f4c5fdd1f1ce) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore: update dependencies of "create-cloudflare" package
+
+  The following dependency versions have been updated:
+
+  | Dependency | From   | To     |
+  | ---------- | ------ | ------ |
+  | create-vue | 3.18.0 | 3.18.1 |
+
+- [#10876](https://github.com/cloudflare/workers-sdk/pull/10876) [`dd95f7f`](https://github.com/cloudflare/workers-sdk/commit/dd95f7f0f3d95b7c2285b23c57a19216ec4ec027) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore: update dependencies of "create-cloudflare" package
+
+  The following dependency versions have been updated:
+
+  | Dependency | From  | To    |
+  | ---------- | ----- | ----- |
+  | sv         | 0.9.6 | 0.9.7 |
+
+- [#10877](https://github.com/cloudflare/workers-sdk/pull/10877) [`f4a92fd`](https://github.com/cloudflare/workers-sdk/commit/f4a92fd014b7d82d32bcef78b612f4f227d12a86) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore: update dependencies of "create-cloudflare" package
+
+  The following dependency versions have been updated:
+
+  | Dependency      | From   | To     |
+  | --------------- | ------ | ------ |
+  | @angular/create | 20.3.3 | 20.3.4 |
+
+## 2.52.2
+
+### Patch Changes
+
+- [#10457](https://github.com/cloudflare/workers-sdk/pull/10457) [`862034c`](https://github.com/cloudflare/workers-sdk/commit/862034c6a64bef8d45fe6adb2a3fab76207a7f24) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore: update dependencies of "create-cloudflare" package
+
+  The following dependency versions have been updated:
+
+  | Dependency   | From  | To     |
+  | ------------ | ----- | ------ |
+  | create-solid | 0.6.7 | 0.6.11 |
+
+## 2.52.1
+
+### Patch Changes
+
+- [#10641](https://github.com/cloudflare/workers-sdk/pull/10641) [`cc47218`](https://github.com/cloudflare/workers-sdk/commit/cc47218b8ce3e0aac075ef13c1e4b0c5a8c2b6c3) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore: update dependencies of "create-cloudflare" package
+
+  The following dependency versions have been updated:
+
+  | Dependency          | From  | To    |
+  | ------------------- | ----- | ----- |
+  | create-react-router | 7.8.2 | 7.9.3 |
+
+- [#10642](https://github.com/cloudflare/workers-sdk/pull/10642) [`a6cfc06`](https://github.com/cloudflare/workers-sdk/commit/a6cfc06d5dc23c9f098221608fe1dc0521cdb0b2) Thanks [@dependabot](https://github.com/apps/dependabot)! - chore: update dependencies of "create-cloudflare" package
+
+  The following dependency versions have been updated:
+
+  | Dependency      | From   | To     |
+  | --------------- | ------ | ------ |
+  | @angular/create | 20.3.0 | 20.3.3 |
+
+- [#10766](https://github.com/cloudflare/workers-sdk/pull/10766) [`bd5b720`](https://github.com/cloudflare/workers-sdk/commit/bd5b720c44f8bc04ac153154c1f8b8a291af7139) Thanks [@petebacondarwin](https://github.com/petebacondarwin)! - Do not override any `.env` settings in `.gitignore` files
+
+  Previously we only looked for `.env*` in the `gitignore` but now we cover more cases such as:
+
+  - `.env`
+  - `.env\*`
+  - `.env.<local|production|staging|...>`
+  - `.env\*.<local|production|staging|...>`
+
 ## 2.52.0
 
 ### Minor Changes

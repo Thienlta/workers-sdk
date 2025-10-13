@@ -4,8 +4,6 @@ import { requireAuth } from "../../user";
 import { mockConsoleMethods } from "../helpers/mock-console";
 import { runWrangler } from "../helpers/run-wrangler";
 
-vi.unmock("../../wrangler-banner");
-
 vi.mock("../../r2/helpers");
 vi.mock("../../user");
 
@@ -17,8 +15,6 @@ const mockGetR2BucketMetrics = vi.mocked(getR2BucketMetrics);
 
 describe("r2 bucket info", () => {
 	beforeEach(() => {
-		vi.resetAllMocks();
-
 		mockRequireAuth.mockResolvedValue("test-account-id");
 		mockGetR2Bucket.mockResolvedValue({
 			name: "my-bucket-name",

@@ -1,5 +1,19 @@
 # @cloudflare/unenv-preset
 
+## 2.7.7
+
+### Patch Changes
+
+- [#10882](https://github.com/cloudflare/workers-sdk/pull/10882) [`f29b0b0`](https://github.com/cloudflare/workers-sdk/commit/f29b0b0863377df1818727cfbe39f0cd30e8b768) Thanks [@vicb](https://github.com/vicb)! - Use the native `node:punycode` module when available.
+
+  It is enabled when the `enable_nodejs_punycode_module` compatibility flag is set.
+
+## 2.7.6
+
+### Patch Changes
+
+- [#10860](https://github.com/cloudflare/workers-sdk/pull/10860) [`2594130`](https://github.com/cloudflare/workers-sdk/commit/259413027f2d0c77041c121ce946fb3131de3241) Thanks [@vicb](https://github.com/vicb)! - Revert "Drop `node:process` polyfill when v2 is available"
+
 ## 2.7.5
 
 ### Patch Changes

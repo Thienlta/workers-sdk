@@ -47,7 +47,7 @@ const nativeModules = [
 ];
 
 // Modules implemented via a mix of workerd APIs and polyfills.
-const hybridModules = ["console"];
+const hybridModules = ["console", "process"];
 
 /**
  * Creates the Cloudflare preset for the given compatibility date and compatibility flags
@@ -72,7 +72,7 @@ export function getCloudflarePreset({
 	const http2Overrides = getHttp2Overrides(compat);
 	const osOverrides = getOsOverrides(compat);
 	const fsOverrides = getFsOverrides(compat);
-	const processOverrides = getProcessOverrides(compat);
+	const punycodeOverrides = getPunycodeOverrides(compat);
 
 	// "dynamic" as they depend on the compatibility date and flags
 	const dynamicNativeModules = [
@@ -81,7 +81,7 @@ export function getCloudflarePreset({
 		...http2Overrides.nativeModules,
 		...osOverrides.nativeModules,
 		...fsOverrides.nativeModules,
-		...processOverrides.nativeModules,
+		...punycodeOverrides.nativeModules,
 	];
 
 	// "dynamic" as they depend on the compatibility date and flags
@@ -91,7 +91,7 @@ export function getCloudflarePreset({
 		...http2Overrides.hybridModules,
 		...osOverrides.hybridModules,
 		...fsOverrides.hybridModules,
-		...processOverrides.hybridModules,
+		...punycodeOverrides.hybridModules,
 	];
 
 	return {
@@ -125,7 +125,7 @@ export function getCloudflarePreset({
 			clearImmediate: false,
 			setImmediate: false,
 			console: "@cloudflare/unenv-preset/node/console",
-			...processOverrides.inject,
+			process: "@cloudflare/unenv-preset/node/process",
 		},
 		polyfill: ["@cloudflare/unenv-preset/polyfill/performance"],
 		external: dynamicNativeModules.flatMap((p) => [p, `node:${p}`]),
@@ -310,46 +310,39 @@ function getFsOverrides({
 }
 
 /**
- * Returns the overrides for `node:process` and `node:fs/promises`
+ * Returns the overrides for `node:punycode` (unenv or workerd)
  *
- * The native process v2 implementation:
- * - is enabled starting from 2025-09-15
- * - can be enabled with the "enable_nodejs_process_v2" flag
- * - can be disabled with the "disable_nodejs_process_v2" flag
+ * The native punycode implementation:
+ * - is experimental
+ * - can be enabled with the "enable_nodejs_punycode_module" flag
+ * - can be disabled with the "disable_nodejs_punycode_module" flag
  */
-function getProcessOverrides({
+function getPunycodeOverrides({
+	// eslint-disable-next-line unused-imports/no-unused-vars
 	compatibilityDate,
 	compatibilityFlags,
 }: {
 	compatibilityDate: string;
 	compatibilityFlags: string[];
-}): {
-	nativeModules: string[];
-	hybridModules: string[];
-	inject: { process: string | false };
-} {
-	const disabledV2ByFlag = compatibilityFlags.includes(
-		"disable_nodejs_process_v2"
+}): { nativeModules: string[]; hybridModules: string[] } {
+	const disabledByFlag = compatibilityFlags.includes(
+		"disable_nodejs_punycode_module"
 	);
 
-	const enabledV2ByFlag = compatibilityFlags.includes(
-		"enable_nodejs_process_v2"
-	);
-	const enabledV2ByDate = compatibilityDate >= "2025-09-15";
+	// TODO: add `enabledByDate` when a date is defined in workerd
+	const enabledByFlag =
+		compatibilityFlags.includes("enable_nodejs_punycode_module") &&
+		compatibilityFlags.includes("experimental");
 
-	const isV2 = (enabledV2ByFlag || enabledV2ByDate) && !disabledV2ByFlag;
+	const enabled = enabledByFlag && !disabledByFlag;
 
-	return isV2
+	return enabled
 		? {
-				nativeModules: ["process"],
+				nativeModules: ["punycode"],
 				hybridModules: [],
-				// We can use the native global, return `false` to drop the unenv default
-				inject: { process: false },
 			}
 		: {
 				nativeModules: [],
-				hybridModules: ["process"],
-				// Use the module default export as the global `process`
-				inject: { process: "@cloudflare/unenv-preset/node/process" },
+				hybridModules: [],
 			};
 }
