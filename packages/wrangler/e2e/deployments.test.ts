@@ -1,9 +1,11 @@
 import assert from "node:assert";
+import isCI from "is-ci";
 import dedent from "ts-dedent";
 import { fetch } from "undici";
 import {
 	afterAll,
 	afterEach,
+	beforeAll,
 	beforeEach,
 	describe,
 	expect,
@@ -13,14 +15,10 @@ import {
 import { CLOUDFLARE_ACCOUNT_ID } from "./helpers/account-id";
 import { WranglerE2ETestHelper } from "./helpers/e2e-wrangler-test";
 import { generateResourceName } from "./helpers/generate-resource-name";
-import { normalizeOutput } from "./helpers/normalize";
+import { normalizeOutput, validateAssetUploadLogs } from "./helpers/normalize";
 import { retry } from "./helpers/retry";
 
 const TIMEOUT = 50_000;
-const normalize = (str: string) =>
-	normalizeOutput(str, {
-		[CLOUDFLARE_ACCOUNT_ID]: "CLOUDFLARE_ACCOUNT_ID",
-	}).replaceAll(/^Author:.*$/gm, "Author:      person@example.com");
 
 describe.skipIf(!CLOUDFLARE_ACCOUNT_ID)(
 	"deployments",
@@ -73,7 +71,7 @@ describe.skipIf(!CLOUDFLARE_ACCOUNT_ID)(
 		it("lists 1 deployment", async () => {
 			const output = await helper.run(`wrangler deployments list`);
 
-			expect(normalize(output.stdout)).toMatchInlineSnapshot(`
+			expect(normalizeOutput(output.stdout)).toMatchInlineSnapshot(`
 				"Created:     TIMESTAMP
 				Author:      person@example.com
 				Source:      Upload
@@ -107,7 +105,7 @@ describe.skipIf(!CLOUDFLARE_ACCOUNT_ID)(
 
 		it("lists 2 deployments", async () => {
 			const dep = await helper.run(`wrangler deployments list`);
-			expect(normalize(dep.stdout)).toMatchInlineSnapshot(`
+			expect(normalizeOutput(dep.stdout)).toMatchInlineSnapshot(`
 				"Created:     TIMESTAMP
 				Author:      person@example.com
 				Source:      Upload
@@ -131,7 +129,7 @@ describe.skipIf(!CLOUDFLARE_ACCOUNT_ID)(
 			const output = await helper.run(
 				`wrangler rollback --message "A test message"`
 			);
-			expect(normalize(output.stdout)).toMatchInlineSnapshot(`
+			expect(normalizeOutput(output.stdout)).toMatchInlineSnapshot(`
 				"├ Fetching latest deployment
 				│
 				├ Your current deployment has 1 version(s):
@@ -168,7 +166,7 @@ describe.skipIf(!CLOUDFLARE_ACCOUNT_ID)(
 
 		it("lists deployments", async () => {
 			const dep = await helper.run(`wrangler deployments list`);
-			expect(normalize(dep.stdout)).toMatchInlineSnapshot(`
+			expect(normalizeOutput(dep.stdout)).toMatchInlineSnapshot(`
 				"Created:     TIMESTAMP
 				Author:      person@example.com
 				Source:      Upload
@@ -606,7 +604,7 @@ describe.skipIf(!CLOUDFLARE_ACCOUNT_ID)("Workers + Assets deployment", () => {
 			let output = await helper.run(
 				`wrangler dispatch-namespace create ${dispatchNamespaceName}`
 			);
-			let normalizedStdout = normalize(output.stdout);
+			let normalizedStdout = normalizeOutput(output.stdout);
 			expect(normalizedStdout).toContain(
 				`Created dispatch namespace "tmp-e2e-dispatch-00000000-0000-0000-0000-000000000000" with ID "00000000-0000-0000-0000-000000000000"`
 			);
@@ -625,7 +623,7 @@ describe.skipIf(!CLOUDFLARE_ACCOUNT_ID)("Workers + Assets deployment", () => {
 			output = await helper.run(
 				`wrangler deploy -c dispatch-worker/wrangler.toml`
 			);
-			normalizedStdout = normalize(output.stdout);
+			normalizedStdout = normalizeOutput(output.stdout);
 			expect(normalizedStdout).toEqual(`Total Upload: xx KiB / gzip: xx KiB
 Your Worker has access to the following bindings:
 Binding                                                                   Resource
@@ -701,7 +699,7 @@ Current Version ID: 00000000-0000-0000-0000-000000000000`);
 			let output = await helper.run(
 				`wrangler dispatch-namespace create ${dispatchNamespaceName}`
 			);
-			let normalizedStdout = normalize(output.stdout);
+			let normalizedStdout = normalizeOutput(output.stdout);
 			expect(normalizedStdout).toContain(
 				`Created dispatch namespace "tmp-e2e-dispatch-00000000-0000-0000-0000-000000000000" with ID "00000000-0000-0000-0000-000000000000"`
 			);
@@ -720,7 +718,7 @@ Current Version ID: 00000000-0000-0000-0000-000000000000`);
 			output = await helper.run(
 				`wrangler deploy -c dispatch-worker/wrangler.toml`
 			);
-			normalizedStdout = normalize(output.stdout);
+			normalizedStdout = normalizeOutput(output.stdout);
 			expect(normalizedStdout).toEqual(`Total Upload: xx KiB / gzip: xx KiB
 Your Worker has access to the following bindings:
 Binding                                                                   Resource
@@ -794,7 +792,7 @@ Current Version ID: 00000000-0000-0000-0000-000000000000`);
 			let output = await helper.run(
 				`wrangler dispatch-namespace create ${dispatchNamespaceName}`
 			);
-			let normalizedStdout = normalize(output.stdout);
+			let normalizedStdout = normalizeOutput(output.stdout);
 			expect(normalizedStdout).toContain(
 				`Created dispatch namespace "tmp-e2e-dispatch-00000000-0000-0000-0000-000000000000" with ID "00000000-0000-0000-0000-000000000000"`
 			);
@@ -813,7 +811,7 @@ Current Version ID: 00000000-0000-0000-0000-000000000000`);
 			output = await helper.run(
 				`wrangler deploy -c dispatch-worker/wrangler.toml`
 			);
-			normalizedStdout = normalize(output.stdout);
+			normalizedStdout = normalizeOutput(output.stdout);
 			expect(normalizedStdout).toEqual(`Total Upload: xx KiB / gzip: xx KiB
 Your Worker has access to the following bindings:
 Binding                                                                   Resource
@@ -842,11 +840,21 @@ Current Version ID: 00000000-0000-0000-0000-000000000000`);
 			await checkAssets(testCases, deployedUrl);
 		});
 	});
+});
 
-	describe("durable objects [containers]", () => {
-		beforeEach(async () => {
-			await helper.seed({
-				"wrangler.toml": dedent`
+const skipContainersTest =
+	!CLOUDFLARE_ACCOUNT_ID || (isCI && process.platform !== "linux");
+describe.skipIf(skipContainersTest)("containers", () => {
+	let helper: WranglerE2ETestHelper;
+	let workerName: string;
+	let applicationId: string | undefined;
+	let deployedUrl: string;
+
+	beforeAll(async () => {
+		helper = new WranglerE2ETestHelper();
+		workerName = generateResourceName();
+		await helper.seed({
+			"wrangler.toml": dedent`
 						name = "${workerName}"
 						main = "src/index.ts"
 						compatibility_date = "2023-01-01"
@@ -859,14 +867,36 @@ Current Version ID: 00000000-0000-0000-0000-000000000000`);
 						[[containers]]
 						name = "e2e-test-${workerName}"
 						class_name = "MyDurableObject"
-						image = "registry.cloudchamber.cfdata.org/e2e-test:1.0"
+						image = "./Dockerfile"
 						max_instances = 1
 
 						[[migrations]]
 						tag = "v1"
 						new_sqlite_classes = ["MyDurableObject"]
+
+						[observability]
+						enabled = true
 				`,
-				"src/index.ts": dedent`
+			"container/index.js": dedent`
+				const { createServer } = require("http");
+
+				const server = createServer((req, res) => {
+				  res.writeHead(200, { 'Content-Type': 'text/plain' });
+				  res.end('hello from container');
+				});
+
+				server.listen(80, () => {
+				  console.log('Server running on port 80');
+				});
+				`,
+			Dockerfile: dedent`
+				FROM node:18-slim
+				WORKDIR /app
+				COPY container/index.js .
+				CMD ["node", "index.js"]
+				EXPOSE 80
+				`,
+			"src/index.ts": dedent`
               export default {
                 async fetch(req, env) {
                   const url = new URL(req.url)
@@ -902,87 +932,58 @@ Current Version ID: 00000000-0000-0000-0000-000000000000`);
                   return this.ctx.container.getTcpPort(80).fetch(new Request("http://foo"));
                 }
               }`,
-			});
 		});
+	});
 
-		it(
-			"can fetch DO container",
-			{ timeout: 60 * 3 * 1000, retry: 3 },
+	afterAll(async () => {
+		// clean up user Worker after each test
+		const deleteWorker = helper.run(`wrangler delete`);
+		const deleteContainer = helper.run(
+			`wrangler containers delete ${applicationId}`
+		);
+		await Promise.allSettled([deleteWorker, deleteContainer]);
+	});
+
+	it(
+		"won't rebuild unchanged containers",
+		{ timeout: 60 * 2 * 1000 },
+		async () => {
+			const outputOne = await helper.run(`wrangler deploy`);
+
+			deployedUrl = getDeployedUrl(outputOne);
+
+			const matchApplicationId = outputOne.stdout.match(
+				/([(]Application ID: (?<applicationId>.+?)[)])/
+			);
+			applicationId = matchApplicationId?.groups?.applicationId;
+			assert(matchApplicationId?.groups);
+
+			const outputTwo = await helper.run(`wrangler deploy`);
+			expect(outputTwo.stdout).toContain(`No changes to be made`);
+		}
+	);
+
+	it("can fetch DO container", { timeout: 60 * 2 * 1000 }, async () => {
+		await vi.waitFor(
 			async () => {
-				const output = await helper.run(`wrangler deploy`);
-
-				const deployedUrl = getDeployedUrl(output);
-
-				const matchApplicationId = output.stdout.match(
-					/([(]Application ID: (?<applicationId>.+?)[)])/
-				);
-				assert(matchApplicationId?.groups);
-
-				try {
-					await vi.waitFor(
-						async () => {
-							const response = await fetch(`${deployedUrl}/do`);
-							if (!response.ok) {
-								throw new Error(
-									"Durable object transient error: " + (await response.text())
-								);
-							}
-
-							expect(await response.text()).toEqual("hello from container");
-						},
-
-						// big timeout for containers
-						// (3m)
-						{ timeout: 60 * 3 * 1000, interval: 1000 }
-					);
-				} finally {
-					await helper.run(
-						`wrangler containers delete ${matchApplicationId.groups.applicationId}`
+				const response = await fetch(`${deployedUrl}/do`, {
+					signal: AbortSignal.timeout(5_000),
+				});
+				if (!response.ok) {
+					throw new Error(
+						"Durable object transient error: " + (await response.text())
 					);
 				}
-			}
+
+				expect(await response.text()).toEqual("hello from container");
+			},
+
+			// big timeout for containers
+			// (3m)
+			{ timeout: 60 * 2 * 1000, interval: 1000 }
 		);
 	});
 });
-
-/**
- * Checks the logs that are output during asset upload to ensure they are correct.
- *
- * @param output The output from the `wrangler deploy` command.
- * @param files An array of file paths that should be uploaded.
- * @param includeDebug Whether to check for debug logs as well. Default is false.
- */
-function validateAssetUploadLogs(
-	output: { stdout: string },
-	files: string[],
-	{ includeDebug = false } = {}
-) {
-	const normalizedStdout = normalize(output.stdout);
-
-	expect(normalizedStdout).toContain(`🌀 Building list of assets...`);
-	expect(normalizedStdout).toMatch(
-		/✨ Read \d+ files from the assets directory \/tmpdir/
-	);
-
-	expect(normalizedStdout).toContain("🌀 Starting asset upload...");
-	expect(normalizedStdout).toContain(
-		`🌀 Found ${files.length} new or modified static assets to upload. Proceeding with upload...`
-	);
-
-	// We can't guarantee that the files will be uploaded one at a time
-	expect(normalizedStdout).toMatch(
-		new RegExp(`Uploaded \\d+ of ${files.length} assets`)
-	);
-	if (includeDebug) {
-		for (let i = 1; i <= files.length; i++) {
-			expect(normalizedStdout).toContain(`✨ ${files[i - 1]}`);
-		}
-	}
-
-	expect(normalizedStdout).toContain(
-		`✨ Success! Uploaded ${files.length} files (TIMINGS)`
-	);
-}
 
 /**
  * Extracts the deployed URL from the output of a Wrangler command.
