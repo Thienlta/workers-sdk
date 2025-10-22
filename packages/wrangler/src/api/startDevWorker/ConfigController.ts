@@ -37,9 +37,9 @@ import {
 } from "../../utils/constants";
 import { getRules } from "../../utils/getRules";
 import { getScriptName } from "../../utils/getScriptName";
-import { isLegacyEnv } from "../../utils/isLegacyEnv";
 import { memoizeGetPort } from "../../utils/memoizeGetPort";
 import { printBindings } from "../../utils/print-bindings";
+import { useServiceEnvironments } from "../../utils/useServiceEnvironments";
 import { getZoneIdForPreview } from "../../zones";
 import { Controller } from "./BaseController";
 import { castErrorCause } from "./events";
@@ -342,6 +342,9 @@ async function resolveConfig(
 		compatibilityDate: getDevCompatibilityDate(config, input.compatibilityDate),
 		compatibilityFlags: input.compatibilityFlags ?? config.compatibility_flags,
 		complianceRegion: input.complianceRegion ?? config.compliance_region,
+		pythonModules: {
+			exclude: input.pythonModules?.exclude ?? config.python_modules.exclude,
+		},
 		entrypoint: entry.file,
 		projectRoot: entry.projectRoot,
 		bindings,
@@ -380,8 +383,8 @@ async function resolveConfig(
 		dev: await resolveDevConfig(config, input),
 		legacy: {
 			site: legacySite,
-			enableServiceEnvironments:
-				input.legacy?.enableServiceEnvironments ?? !isLegacyEnv(config),
+			useServiceEnvironments:
+				input.legacy?.useServiceEnvironments ?? useServiceEnvironments(config),
 		},
 		unsafe: {
 			capnp: input.unsafe?.capnp ?? unsafe?.capnp,
@@ -558,7 +561,7 @@ export class ConfigController extends Controller<ConfigControllerEventMap> {
 					config: input.config,
 					env: input.env,
 					"dispatch-namespace": undefined,
-					"legacy-env": !input.legacy?.enableServiceEnvironments,
+					"legacy-env": !input.legacy?.useServiceEnvironments,
 					remote: !!input.dev?.remote,
 					upstreamProtocol:
 						input.dev?.origin?.secure === undefined

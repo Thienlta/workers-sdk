@@ -88,6 +88,12 @@ export interface StartDevWorkerInput {
 	/** Specify the compliance region mode of the Worker. */
 	complianceRegion?: Config["compliance_region"];
 
+	/** Configuration for Python modules. */
+	pythonModules?: {
+		/** A list of glob patterns to exclude files from the python_modules directory when bundling. */
+		exclude?: string[];
+	};
+
 	env?: string;
 
 	/**
@@ -213,7 +219,7 @@ export interface StartDevWorkerInput {
 	};
 	legacy?: {
 		site?: Hook<Config["site"], [Config]>;
-		enableServiceEnvironments?: boolean;
+		useServiceEnvironments?: boolean;
 	};
 	unsafe?: Omit<CfUnsafe, "bindings">;
 	assets?: string;

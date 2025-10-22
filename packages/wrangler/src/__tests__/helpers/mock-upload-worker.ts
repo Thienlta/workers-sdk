@@ -30,6 +30,7 @@ export function mockUploadWorkerRequest(
 		expectedType?: "esm" | "sw" | "none";
 		expectedBindings?: unknown;
 		expectedModules?: Record<string, string | null>;
+		excludedModules?: string[];
 		expectedCompatibilityDate?: string;
 		expectedCompatibilityFlags?: string[];
 		expectedMigrations?: CfWorkerInit["migrations"];
@@ -38,7 +39,7 @@ export function mockUploadWorkerRequest(
 		expectedCapnpSchema?: string;
 		expectedLimits?: CfWorkerInit["limits"];
 		env?: string;
-		legacyEnv?: boolean;
+		useServiceEnvironments?: boolean;
 		keepVars?: boolean;
 		keepSecrets?: boolean;
 		tag?: string;
@@ -61,7 +62,7 @@ export function mockUploadWorkerRequest(
 		);
 		expect(params.accountId).toEqual("some-account-id");
 		expect(params.scriptName).toEqual(expectedScriptName);
-		if (!legacyEnv) {
+		if (useServiceEnvironments) {
 			expect(params.envName).toEqual(env);
 		}
 		if (useOldUploadApi) {
@@ -142,6 +143,9 @@ export function mockUploadWorkerRequest(
 		for (const [name, content] of Object.entries(expectedModules)) {
 			expect(await serialize(formBody.get(name))).toEqual(content);
 		}
+		for (const name of excludedModules) {
+			expect(formBody.get(name)).toBeNull();
+		}
 
 		if (useOldUploadApi) {
 			return HttpResponse.json(
@@ -180,10 +184,11 @@ export function mockUploadWorkerRequest(
 		expectedType = "esm",
 		expectedBindings,
 		expectedModules = {},
+		excludedModules = [],
 		expectedCompatibilityDate,
 		expectedCompatibilityFlags,
 		env = undefined,
-		legacyEnv = false,
+		useServiceEnvironments = true,
 		expectedMigrations,
 		expectedTailConsumers,
 		expectedUnsafeMetaData,
@@ -200,9 +205,9 @@ export function mockUploadWorkerRequest(
 
 	const expectedScriptName =
 		options.expectedScriptName ??
-		"test-name" + (legacyEnv && env ? `-${env}` : "");
+		"test-name" + (!useServiceEnvironments && env ? `-${env}` : "");
 
-	if (env && !legacyEnv) {
+	if (env && useServiceEnvironments) {
 		msw.use(
 			http.put(
 				"*/accounts/:accountId/workers/services/:scriptName/environments/:envName",
@@ -272,7 +277,7 @@ export function mockUploadWorkerRequest(
 		enabled: subdomainDefaults.workers_dev,
 		previews_enabled: subdomainDefaults.preview_urls,
 		env,
-		legacyEnv,
+		useServiceEnvironments,
 		expectedScriptName,
 	});
 	const subdomainValues = getSubdomainValues(
@@ -288,7 +293,7 @@ export function mockUploadWorkerRequest(
 			previews_enabled: subdomainDefaults.preview_urls,
 		},
 		env,
-		legacyEnv,
+		useServiceEnvironments,
 		expectedScriptName,
 	});
 }

@@ -18,7 +18,7 @@ import {
 	getBindingNames,
 	hasProperty,
 	inheritable,
-	inheritableInLegacyEnvironments,
+	inheritableInWranglerEnvironments,
 	isBoolean,
 	isMutuallyExclusiveWith,
 	isOneOf,
@@ -153,16 +153,22 @@ export function normalizeAndValidateConfig(
 		"string"
 	);
 
-	// TODO: set the default to false to turn on service environments as the default
-	const isLegacyEnv =
-		typeof args["legacy-env"] === "boolean"
-			? args["legacy-env"]
-			: rawConfig.legacy_env ?? true;
+	/**
+	 * Legacy env refers to wrangler environments, which are not actually legacy in any way.
+	 * This is opposed to service environments, which are deprecated.
+	 * Unfortunately legacy-env is a public facing arg and config option, so we have to leave the name.
+	 * However we can change the internal handling to be less confusing.
+	 */
 
-	// TODO: remove this once service environments goes GA.
-	if (!isLegacyEnv) {
+	const useServiceEnvironments = !(
+		args["legacy-env"] ??
+		rawConfig.legacy_env ??
+		true
+	);
+
+	if (useServiceEnvironments) {
 		diagnostics.warnings.push(
-			"Experimental: Service environments are in beta, and their behaviour is guaranteed to change in the future. DO NOT USE IN PRODUCTION."
+			"Service environments are deprecated, and will be removed in the future. DO NOT USE IN PRODUCTION."
 		);
 	}
 
@@ -247,7 +253,7 @@ export function normalizeAndValidateConfig(
 					preserveOriginalMain,
 					envName,
 					topLevelEnv,
-					isLegacyEnv,
+					useServiceEnvironments,
 					rawConfig
 				);
 				diagnostics.addChild(envDiagnostics);
@@ -260,7 +266,7 @@ export function normalizeAndValidateConfig(
 					preserveOriginalMain,
 					envName,
 					topLevelEnv,
-					isLegacyEnv,
+					useServiceEnvironments,
 					rawConfig
 				);
 				const envNames = rawConfig.env
@@ -302,7 +308,8 @@ export function normalizeAndValidateConfig(
 			configPath,
 			rawConfig.pages_build_output_dir
 		),
-		legacy_env: isLegacyEnv,
+		/** Legacy_env is wrangler environments, as opposed to service environments. Wrangler environments is not legacy.  */
+		legacy_env: !useServiceEnvironments,
 		send_metrics: rawConfig.send_metrics,
 		keep_vars: rawConfig.keep_vars,
 		...activeEnv,
@@ -1021,7 +1028,7 @@ function normalizeAndValidateEnvironment(
 	preserveOriginalMain: boolean,
 	envName: string,
 	topLevelEnv: Environment,
-	isLegacyEnv: boolean,
+	useServiceEnvironments: boolean,
 	rawConfig: RawConfig
 ): Environment;
 function normalizeAndValidateEnvironment(
@@ -1032,7 +1039,7 @@ function normalizeAndValidateEnvironment(
 	preserveOriginalMain: boolean,
 	envName = "top level",
 	topLevelEnv?: Environment | undefined,
-	isLegacyEnv?: boolean,
+	useServiceEnvironments?: boolean,
 	rawConfig?: RawConfig | undefined
 ): Environment {
 	deprecated(
@@ -1050,9 +1057,9 @@ function normalizeAndValidateEnvironment(
 
 	const route = normalizeAndValidateRoute(diagnostics, topLevelEnv, rawEnv);
 
-	const account_id = inheritableInLegacyEnvironments(
+	const account_id = inheritableInWranglerEnvironments(
 		diagnostics,
-		isLegacyEnv,
+		useServiceEnvironments,
 		topLevelEnv,
 		mutateEmptyStringAccountIDValue(diagnostics, rawEnv),
 		"account_id",
@@ -1130,9 +1137,9 @@ function normalizeAndValidateEnvironment(
 			configPath
 		),
 		rules: validateAndNormalizeRules(diagnostics, topLevelEnv, rawEnv, envName),
-		name: inheritableInLegacyEnvironments(
+		name: inheritableInWranglerEnvironments(
 			diagnostics,
-			isLegacyEnv,
+			useServiceEnvironments,
 			topLevelEnv,
 			rawEnv,
 			"name",
@@ -1590,6 +1597,14 @@ function normalizeAndValidateEnvironment(
 			"compliance_region",
 			isOneOf("public", "fedramp_high"),
 			undefined
+		),
+		python_modules: inheritable(
+			diagnostics,
+			topLevelEnv,
+			rawEnv,
+			"python_modules",
+			validatePythonModules,
+			{ exclude: ["**/*.pyc"] }
 		),
 	};
 
@@ -4324,6 +4339,7 @@ const validateObservability: ValidatorFn = (diagnostics, field, value) => {
 				"head_sampling_rate",
 				"invocation_logs",
 				"destinations",
+				"persist",
 			]) && isValid;
 	}
 
@@ -4419,6 +4435,37 @@ function warnIfDurableObjectsHaveNoMigrations(
 		}
 	}
 }
+
+const validatePythonModules: ValidatorFn = (
+	diagnostics,
+	field,
+	value,
+	topLevelEnv
+) => {
+	if (value === undefined) {
+		return true;
+	}
+
+	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+		diagnostics.errors.push(
+			`"${field}" should be an object but got ${JSON.stringify(value)}.`
+		);
+		return false;
+	}
+
+	const val = value as { exclude?: unknown };
+	if (!("exclude" in val)) {
+		return false;
+	}
+
+	if (
+		!isStringArray(diagnostics, `${field}.exclude`, val.exclude, topLevelEnv)
+	) {
+		return false;
+	}
+
+	return true;
+};
 
 function isRemoteValid(
 	targetObject: object,
