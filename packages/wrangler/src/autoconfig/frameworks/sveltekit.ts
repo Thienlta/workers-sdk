@@ -1,4 +1,4 @@
-import { writeFileSync } from "fs";
+import { writeFileSync } from "node:fs";
 import { brandColor, dim } from "@cloudflare/cli/colors";
 import { getPackageManager } from "../../package-manager";
 import { runCommand } from "../c3-vendor/command";
@@ -8,8 +8,6 @@ import type { ConfigurationOptions } from ".";
 import type { RawConfig } from "@cloudflare/workers-utils";
 
 export class SvelteKit extends Framework {
-	name = "svelte-kit";
-
 	async configure({ dryRun }: ConfigurationOptions): Promise<RawConfig> {
 		const { dlx } = await getPackageManager();
 		if (!dryRun) {
