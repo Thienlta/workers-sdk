@@ -618,6 +618,27 @@ function getFrameworkTestConfig(pm: string): NamedFrameworkTestConfig[] {
 			},
 			nodeCompat: true,
 		},
+		{
+			name: "vike",
+			testCommitMessage: true,
+			timeout: LONG_TIMEOUT,
+			unsupportedOSs: ["win32"],
+			verifyDeploy: {
+				route: "/",
+				expectedText: "Vike",
+			},
+			verifyPreview: {
+				route: "/",
+				expectedText: "Vike",
+			},
+			nodeCompat: false,
+			promptHandlers: [
+				{
+					matcher: /Select a UI framework:/,
+					input: [keys.enter],
+				},
+			],
+		},
 	];
 }
 
@@ -763,6 +784,30 @@ function getExperimentalFrameworkTestConfig(
 			},
 			nodeCompat: false,
 			flags: ["--style", "sass"],
+			verifyTypes: false,
+		},
+		{
+			name: "nuxt:workers",
+			promptHandlers: [
+				{
+					matcher: /Would you like to install any of the official modules\?/,
+					input: [keys.enter],
+				},
+			],
+			argv: ["--platform", "workers"],
+			testCommitMessage: true,
+			timeout: LONG_TIMEOUT,
+			unsupportedOSs: ["win32"],
+			verifyDeploy: {
+				route: "/",
+				expectedText: "Welcome to Nuxt!",
+			},
+			verifyPreview: {
+				previewArgs: ["--inspector-port=0"],
+				route: "/test",
+				expectedText: "C3_TEST",
+			},
+			nodeCompat: false,
 			verifyTypes: false,
 		},
 		{
