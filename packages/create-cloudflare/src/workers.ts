@@ -10,9 +10,9 @@ import { installPackages } from "helpers/packages";
 import * as jsonc from "jsonc-parser";
 import TOML from "smol-toml";
 import {
-	readWranglerJson,
+	readWranglerJsonOrJsonc,
 	readWranglerToml,
-	wranglerJsonExists,
+	wranglerJsonOrJsoncExists,
 	wranglerTomlExists,
 } from "./wrangler/config";
 import type { C3Context, PackageJson } from "types";
@@ -62,8 +62,8 @@ async function generateWorkersTypes(ctx: C3Context, npm: string) {
 
 const maybeInstallNodeTypes = async (ctx: C3Context, npm: string) => {
 	let parsedConfig: Record<string, unknown> = {};
-	if (wranglerJsonExists(ctx)) {
-		parsedConfig = readWranglerJson(ctx);
+	if (wranglerJsonOrJsoncExists(ctx)) {
+		parsedConfig = readWranglerJsonOrJsonc(ctx);
 	} else if (wranglerTomlExists(ctx)) {
 		const wranglerTomlStr = readWranglerToml(ctx);
 		parsedConfig = TOML.parse(wranglerTomlStr);
@@ -144,11 +144,6 @@ export async function updateTsConfig(
 		// add node types if nodejs_compat is enabled
 		if (usesNodeCompat) {
 			newTypes.add("node");
-		}
-
-		if ([...newTypes].sort() === currentTypes.sort()) {
-			// Do not update tsconfig if no types have changed
-			return;
 		}
 
 		// If we detect any tabs, use tabs, otherwise use spaces.
