@@ -1,4 +1,5 @@
 import * as fs from "node:fs";
+import { writeWranglerConfig } from "@cloudflare/workers-utils/test-helpers";
 import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
 import { actionsForEventCategories } from "../../r2/helpers/notification";
@@ -10,7 +11,6 @@ import { useMockIsTTY } from "../helpers/mock-istty";
 import { createFetchResult, msw, mswR2handlers } from "../helpers/msw";
 import { runInTempDir } from "../helpers/run-in-tmp";
 import { runWrangler } from "../helpers/run-wrangler";
-import { writeWranglerConfig } from "../helpers/write-wrangler-config";
 import type { BucketLockRule } from "../../r2/helpers/bucket";
 import type {
 	PutNotificationRequestBody,
@@ -106,7 +106,7 @@ describe("r2", () => {
 				  wrangler r2 bucket info <bucket>    Get information about an R2 bucket
 				  wrangler r2 bucket delete <bucket>  Delete an R2 bucket
 				  wrangler r2 bucket sippy            Manage Sippy incremental migration on an R2 bucket
-				  wrangler r2 bucket catalog          Manage the data catalog for your R2 buckets - provides an Iceberg REST interface for query engines like Spark and PyIceberg [open-beta]
+				  wrangler r2 bucket catalog          Manage the data catalog for your R2 buckets - provides an Iceberg REST interface for query engines like Spark and PyIceberg [open beta]
 				  wrangler r2 bucket notification     Manage event notification rules for an R2 bucket
 				  wrangler r2 bucket domain           Manage custom domains for an R2 bucket
 				  wrangler r2 bucket dev-url          Manage public access via the r2.dev URL for an R2 bucket
@@ -148,7 +148,7 @@ describe("r2", () => {
 				  wrangler r2 bucket info <bucket>    Get information about an R2 bucket
 				  wrangler r2 bucket delete <bucket>  Delete an R2 bucket
 				  wrangler r2 bucket sippy            Manage Sippy incremental migration on an R2 bucket
-				  wrangler r2 bucket catalog          Manage the data catalog for your R2 buckets - provides an Iceberg REST interface for query engines like Spark and PyIceberg [open-beta]
+				  wrangler r2 bucket catalog          Manage the data catalog for your R2 buckets - provides an Iceberg REST interface for query engines like Spark and PyIceberg [open beta]
 				  wrangler r2 bucket notification     Manage event notification rules for an R2 bucket
 				  wrangler r2 bucket domain           Manage custom domains for an R2 bucket
 				  wrangler r2 bucket dev-url          Manage public access via the r2.dev URL for an R2 bucket
@@ -959,13 +959,13 @@ describe("r2", () => {
 					"
 					wrangler r2 bucket catalog
 
-					Manage the data catalog for your R2 buckets - provides an Iceberg REST interface for query engines like Spark and PyIceberg [open-beta]
+					Manage the data catalog for your R2 buckets - provides an Iceberg REST interface for query engines like Spark and PyIceberg [open beta]
 
 					COMMANDS
-					  wrangler r2 bucket catalog enable <bucket>   Enable the data catalog on an R2 bucket [open-beta]
-					  wrangler r2 bucket catalog disable <bucket>  Disable the data catalog for an R2 bucket [open-beta]
-					  wrangler r2 bucket catalog get <bucket>      Get the status of the data catalog for an R2 bucket [open-beta]
-					  wrangler r2 bucket catalog compaction        Control settings for automatic file compaction maintenance jobs for your R2 data catalog [open-beta]
+					  wrangler r2 bucket catalog enable <bucket>   Enable the data catalog on an R2 bucket [open beta]
+					  wrangler r2 bucket catalog disable <bucket>  Disable the data catalog for an R2 bucket [open beta]
+					  wrangler r2 bucket catalog get <bucket>      Get the status of the data catalog for an R2 bucket [open beta]
+					  wrangler r2 bucket catalog compaction        Control settings for automatic file compaction maintenance jobs for your R2 data catalog [open beta]
 
 					GLOBAL FLAGS
 					  -c, --config    Path to Wrangler configuration file  [string]
@@ -1024,7 +1024,7 @@ describe("r2", () => {
 						"
 						wrangler r2 bucket catalog enable <bucket>
 
-						Enable the data catalog on an R2 bucket [open-beta]
+						Enable the data catalog on an R2 bucket [open beta]
 
 						POSITIONALS
 						  bucket  The name of the bucket to enable  [string] [required]
@@ -1057,7 +1057,7 @@ describe("r2", () => {
 						"
 						wrangler r2 bucket catalog disable <bucket>
 
-						Disable the data catalog for an R2 bucket [open-beta]
+						Disable the data catalog for an R2 bucket [open beta]
 
 						POSITIONALS
 						  bucket  The name of the bucket to disable the data catalog for  [string] [required]
@@ -1155,7 +1155,7 @@ describe("r2", () => {
 						"
 						wrangler r2 bucket catalog get <bucket>
 
-						Get the status of the data catalog for an R2 bucket [open-beta]
+						Get the status of the data catalog for an R2 bucket [open beta]
 
 						POSITIONALS
 						  bucket  The name of the R2 bucket whose data catalog status to retrieve  [string] [required]
@@ -1264,11 +1264,11 @@ describe("r2", () => {
 						"
 						wrangler r2 bucket catalog compaction
 
-						Control settings for automatic file compaction maintenance jobs for your R2 data catalog [open-beta]
+						Control settings for automatic file compaction maintenance jobs for your R2 data catalog [open beta]
 
 						COMMANDS
-						  wrangler r2 bucket catalog compaction enable <bucket> [namespace] [table]   Enable automatic file compaction for your R2 data catalog or a specific table [open-beta]
-						  wrangler r2 bucket catalog compaction disable <bucket> [namespace] [table]  Disable automatic file compaction for your R2 data catalog or a specific table [open-beta]
+						  wrangler r2 bucket catalog compaction enable <bucket> [namespace] [table]   Enable automatic file compaction for your R2 data catalog or a specific table [open beta]
+						  wrangler r2 bucket catalog compaction disable <bucket> [namespace] [table]  Disable automatic file compaction for your R2 data catalog or a specific table [open beta]
 
 						GLOBAL FLAGS
 						  -c, --config    Path to Wrangler configuration file  [string]
@@ -1341,7 +1341,7 @@ describe("r2", () => {
 							"
 							wrangler r2 bucket catalog compaction enable <bucket> [namespace] [table]
 
-							Enable automatic file compaction for your R2 data catalog or a specific table [open-beta]
+							Enable automatic file compaction for your R2 data catalog or a specific table [open beta]
 
 							POSITIONALS
 							  bucket     The name of the bucket which contains the catalog  [string] [required]
@@ -1477,7 +1477,7 @@ describe("r2", () => {
 							"
 							wrangler r2 bucket catalog compaction disable <bucket> [namespace] [table]
 
-							Disable automatic file compaction for your R2 data catalog or a specific table [open-beta]
+							Disable automatic file compaction for your R2 data catalog or a specific table [open beta]
 
 							POSITIONALS
 							  bucket     The name of the bucket which contains the catalog  [string] [required]
