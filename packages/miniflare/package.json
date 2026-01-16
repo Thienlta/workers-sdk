@@ -1,6 +1,6 @@
 {
 	"name": "miniflare",
-	"version": "4.20260111.0",
+	"version": "4.20260114.0",
 	"description": "Fun, full-featured, fully-local simulator for Cloudflare Workers",
 	"keywords": [
 		"cloudflare",
@@ -31,7 +31,7 @@
 	],
 	"scripts": {
 		"build": "node scripts/build.mjs && pnpm run types:build",
-		"capnp:workerd": "node scripts/build-capnp.mjs",
+		"capnp:workerd": "capnp-es node_modules/workerd/workerd.capnp -ots:src/runtime/config/generated --src-prefix=node_modules/workerd",
 		"check:lint": "eslint --max-warnings=0 \"{src,test}/**/*.ts\" \"types/**/*.ts\"",
 		"check:type": "tsc",
 		"clean": "rimraf ./dist ./dist-types",
@@ -46,7 +46,7 @@
 		"@cspotcode/source-map-support": "0.8.1",
 		"sharp": "^0.34.5",
 		"undici": "catalog:default",
-		"workerd": "1.20260114.0",
+		"workerd": "1.20260115.0",
 		"ws": "catalog:default",
 		"youch": "4.1.0-beta.10",
 		"zod": "^3.25.76"
