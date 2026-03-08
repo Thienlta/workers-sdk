@@ -1,10 +1,14 @@
 import { Collapsible } from "@base-ui/react/collapsible";
 import { cn } from "@cloudflare/kumo";
-import { CaretRightIcon, DatabaseIcon } from "@phosphor-icons/react";
+import { CaretRightIcon, CubeIcon, DatabaseIcon } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 import CloudflareLogo from "../assets/icons/cloudflare-logo.svg?react";
 import KVIcon from "../assets/icons/kv.svg?react";
-import type { D1DatabaseResponse, WorkersKvNamespace } from "../api";
+import type {
+	D1DatabaseResponse,
+	WorkersKvNamespace,
+	WorkersNamespace,
+} from "../api";
 import type { FileRouteTypes } from "../routeTree.gen";
 import type { FC } from "react";
 
@@ -22,7 +26,6 @@ interface SidebarItemGroupProps {
 			to: FileRouteTypes["to"];
 		};
 	}>;
-	loading: boolean;
 	title: string;
 }
 
@@ -31,7 +34,6 @@ function SidebarItemGroup({
 	error,
 	icon: Icon,
 	items,
-	loading,
 	title,
 }: SidebarItemGroupProps): JSX.Element {
 	return (
@@ -47,17 +49,11 @@ function SidebarItemGroup({
 
 			<Collapsible.Panel className="overflow-hidden transition-[height,opacity] duration-200 ease-out data-starting-style:h-0 data-starting-style:opacity-0 data-ending-style:h-0 data-ending-style:opacity-0">
 				<ul className="list-none ml-3 pl-3 space-y-0.5 border-l border-border">
-					{loading ? (
-						<li className="py-1.5 px-2 text-text-secondary text-sm">
-							Loading...
-						</li>
-					) : null}
-
 					{error ? (
 						<li className="py-1.5 px-2 text-danger text-sm">{error}</li>
 					) : null}
 
-					{!loading && !error
+					{!error
 						? items.map((item) => (
 								<li key={item.id}>
 									<Link
@@ -77,7 +73,7 @@ function SidebarItemGroup({
 							))
 						: null}
 
-					{!loading && !error && items.length === 0 && (
+					{!error && items.length === 0 && (
 						<li className="py-1.5 px-2 text-text-secondary text-sm italic">
 							{emptyLabel}
 						</li>
@@ -92,18 +88,20 @@ interface SidebarProps {
 	currentPath: string;
 	d1Error: string | null;
 	databases: D1DatabaseResponse[];
+	doError: string | null;
+	doNamespaces: WorkersNamespace[];
 	kvError: string | null;
-	loading: boolean;
-	namespaces: WorkersKvNamespace[];
+	kvNamespaces: WorkersKvNamespace[];
 }
 
 export function Sidebar({
 	currentPath,
 	d1Error,
 	databases,
+	doError,
+	doNamespaces,
 	kvError,
-	loading,
-	namespaces,
+	kvNamespaces,
 }: SidebarProps) {
 	return (
 		<aside className="w-sidebar bg-bg-secondary border-r border-border flex flex-col">
@@ -126,7 +124,7 @@ export function Sidebar({
 				emptyLabel="No namespaces"
 				error={kvError}
 				icon={KVIcon}
-				items={namespaces.map((ns) => ({
+				items={kvNamespaces.map((ns) => ({
 					id: ns.id,
 					isActive: currentPath === `/kv/${ns.id}`,
 					label: ns.title,
@@ -135,7 +133,6 @@ export function Sidebar({
 						to: "/kv/$namespaceId",
 					},
 				}))}
-				loading={loading}
 				title="KV Namespaces"
 			/>
 
@@ -153,8 +150,28 @@ export function Sidebar({
 						to: "/d1/$databaseId",
 					},
 				}))}
-				loading={loading}
 				title="D1 Databases"
+			/>
+
+			<SidebarItemGroup
+				emptyLabel="No namespaces"
+				error={doError}
+				icon={CubeIcon}
+				items={doNamespaces.map((ns) => {
+					const className = ns.class ?? ns.name ?? ns.id ?? "Unknown";
+					return {
+						id: ns.id as string,
+						isActive:
+							currentPath === `/do/${className}` ||
+							currentPath.startsWith(`/do/${className}/`),
+						label: className,
+						link: {
+							params: { className },
+							to: "/do/$className",
+						},
+					};
+				})}
+				title="Durable Objects"
 			/>
 		</aside>
 	);
