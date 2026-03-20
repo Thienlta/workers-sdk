@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import dedent from "ts-dedent";
 import { fetch } from "undici";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, it, vi } from "vitest";
 import { WranglerE2ETestHelper } from "./helpers/e2e-wrangler-test";
 import { fetchText } from "./helpers/fetch-text";
 import { generateResourceName } from "./helpers/generate-resource-name";
@@ -47,7 +47,7 @@ describe("multiworker", () => {
 					main = "src/index.ts"
 					compatibility_date = "2024-11-01"
 			`,
-			"src/index.ts": dedent/* javascript */ `
+			"src/index.ts": dedent /* javascript */ `
 				import { DurableObject } from "cloudflare:workers";
 
 				export default {
@@ -113,7 +113,7 @@ describe("multiworker", () => {
                         { name = "REFERENCED_DO", class_name = "MyDurableObject", script_name = "${workerName}" }
                     ]
 			`,
-			"src/index.ts": dedent/* javascript */ `
+			"src/index.ts": dedent /* javascript */ `
 				import { WorkerEntrypoint, RpcTarget } from "cloudflare:workers";
 
 				class Counter extends RpcTarget {
@@ -169,7 +169,7 @@ describe("multiworker", () => {
 					name = "${workerName3}"
 					main = "src/index.ts"
 			`,
-			"src/index.ts": dedent/* javascript */ `
+			"src/index.ts": dedent /* javascript */ `
                 addEventListener("fetch", (event) => {
                     event.respondWith(new Response("Hello from service worker"));
                 });
@@ -204,7 +204,7 @@ describe("multiworker", () => {
 				`,
 			});
 		});
-		it("can fetch b", async () => {
+		it("can fetch b", async ({ expect }) => {
 			const worker = helper.runLongLived(`wrangler dev`, { cwd: b });
 
 			const { url } = await worker.waitForReady(5_000);
@@ -214,7 +214,7 @@ describe("multiworker", () => {
 			);
 		});
 
-		it("can fetch b through a", async () => {
+		it("can fetch b through a", async ({ expect }) => {
 			const workerA = helper.runLongLived(
 				`wrangler dev -c wrangler.toml -c ${b}/wrangler.toml`,
 				{ cwd: a }
@@ -227,7 +227,9 @@ describe("multiworker", () => {
 			);
 		});
 
-		it("can fetch named entrypoint on b through a and do RPC", async () => {
+		it("can fetch named entrypoint on b through a and do RPC", async ({
+			expect,
+		}) => {
 			const workerA = helper.runLongLived(
 				`wrangler dev -c wrangler.toml -c ${b}/wrangler.toml`,
 				{ cwd: a }
@@ -240,7 +242,7 @@ describe("multiworker", () => {
 			);
 		});
 
-		it("can access service props through a binding", async () => {
+		it("can access service props through a binding", async ({ expect }) => {
 			const workerA = helper.runLongLived(
 				`wrangler dev -c wrangler.toml -c ${b}/wrangler.toml`,
 				{ cwd: a }
@@ -260,7 +262,9 @@ describe("multiworker", () => {
 			);
 		});
 
-		it("shows runtime error when fetching non-existent service", async () => {
+		it("shows runtime error when fetching non-existent service", async ({
+			expect,
+		}) => {
 			const service = randomUUID();
 			await baseSeed(a, {
 				"wrangler.toml": dedent`
@@ -306,7 +310,7 @@ describe("multiworker", () => {
 			});
 		});
 
-		it("can fetch service worker c through a", async () => {
+		it("can fetch service worker c through a", async ({ expect }) => {
 			const workerA = helper.runLongLived(
 				`wrangler dev -c wrangler.toml -c ${c}/wrangler.toml`,
 				{ cwd: a }
@@ -346,7 +350,7 @@ describe("multiworker", () => {
 				`,
 			});
 		});
-		it("can fetch DO through a", async () => {
+		it("can fetch DO through a", async ({ expect }) => {
 			const worker = helper.runLongLived(`wrangler dev`, { cwd: a });
 
 			const { url } = await worker.waitForReady(5_000);
@@ -360,7 +364,7 @@ describe("multiworker", () => {
 			).resolves.toMatchObject({ count: 1 });
 		});
 
-		it("can fetch remote DO attached to a through b", async () => {
+		it("can fetch remote DO attached to a through b", async ({ expect }) => {
 			const workerB = helper.runLongLived(
 				`wrangler dev -c wrangler.toml -c ${a}/wrangler.toml`,
 				{ cwd: b }
@@ -380,7 +384,9 @@ describe("multiworker", () => {
 			);
 		});
 
-		it("can fetch remote DO attached to a through b with RPC", async () => {
+		it("can fetch remote DO attached to a through b with RPC", async ({
+			expect,
+		}) => {
 			const workerB = helper.runLongLived(
 				`wrangler dev -c wrangler.toml -c ${a}/wrangler.toml`,
 				{ cwd: b }
@@ -408,7 +414,7 @@ describe("multiworker", () => {
 						[[tail_consumers]]
 						service = "${workerName2}"
 				`,
-				"src/index.ts": dedent/* javascript */ `
+				"src/index.ts": dedent /* javascript */ `
 					export default {
 						async fetch(req, env) {
 							console.log("log something")
@@ -425,7 +431,7 @@ describe("multiworker", () => {
 						main = "src/index.ts"
 						compatibility_date = "2025-04-28"
 				`,
-				"src/index.ts": dedent/* javascript */ `
+				"src/index.ts": dedent /* javascript */ `
 					export default {
 						async tail(event) {
 							console.log("received tail event", event)
@@ -435,7 +441,7 @@ describe("multiworker", () => {
 			});
 		});
 
-		it("can fetch a without b running", async () => {
+		it("can fetch a without b running", async ({ expect }) => {
 			const worker = helper.runLongLived(`wrangler dev`, { cwd: a });
 
 			const { url } = await worker.waitForReady(5_000);
@@ -443,7 +449,7 @@ describe("multiworker", () => {
 			await expect(fetchText(`${url}`)).resolves.toBe("hello from a");
 		});
 
-		it("tail event sent to b", async () => {
+		it("tail event sent to b", async ({ expect }) => {
 			const worker = helper.runLongLived(
 				`wrangler dev -c wrangler.toml -c ${b}/wrangler.toml`,
 				{ cwd: a }
@@ -475,7 +481,7 @@ describe("multiworker", () => {
 						[[streaming_tail_consumers]]
 						service = "${workerName2}"
 				`,
-				"src/index.ts": dedent/* javascript */ `
+				"src/index.ts": dedent /* javascript */ `
 					export default {
 						async fetch(req, env) {
 							console.log("log something")
@@ -492,7 +498,7 @@ describe("multiworker", () => {
 						main = "src/index.ts"
 						compatibility_date = "2025-04-28"
 				`,
-				"src/index.ts": dedent/* javascript */ `
+				"src/index.ts": dedent /* javascript */ `
 					export default {
 						async tail(event) {
 							console.log("received tail event", event)
@@ -505,7 +511,7 @@ describe("multiworker", () => {
 			});
 		});
 
-		it("logs tail event sent to b", async () => {
+		it("logs tail event sent to b", async ({ expect }) => {
 			const worker = helper.runLongLived(
 				`wrangler dev -c wrangler.toml -c ${b}/wrangler.toml`,
 				{ cwd: a }
@@ -538,11 +544,11 @@ describe("multiworker", () => {
 					binding = "BEE"
 					service = '${workerName2}'
 				`,
-				"functions/cee.ts": dedent/* javascript */ `
+				"functions/cee.ts": dedent /* javascript */ `
 				export async function onRequest(context) {
 					return context.env.CEE.fetch("https://example.com");
 				}`,
-				"functions/bee.ts": dedent/* javascript */ `
+				"functions/bee.ts": dedent /* javascript */ `
 				export async function onRequest(context) {
 					return context.env.BEE.fetch("https://example.com");
 				}`,
@@ -550,7 +556,7 @@ describe("multiworker", () => {
 			});
 		});
 
-		it("pages project assets", async () => {
+		it("pages project assets", async ({ expect }) => {
 			const pages = helper.runLongLived(
 				`wrangler pages dev -c wrangler.toml -c ${b}/wrangler.toml -c ${c}/wrangler.toml`,
 				{ cwd: a }
@@ -566,7 +572,7 @@ describe("multiworker", () => {
 			);
 		});
 
-		it("pages project fetching service worker", async () => {
+		it("pages project fetching service worker", async ({ expect }) => {
 			const pages = helper.runLongLived(
 				`wrangler pages dev -c wrangler.toml -c ${b}/wrangler.toml -c ${c}/wrangler.toml`,
 				{ cwd: a }
@@ -582,7 +588,7 @@ describe("multiworker", () => {
 			);
 		});
 
-		it("pages project fetching module worker", async () => {
+		it("pages project fetching module worker", async ({ expect }) => {
 			const pages = helper.runLongLived(
 				`wrangler pages dev -c wrangler.toml -c ${b}/wrangler.toml -c ${c}/wrangler.toml`,
 				{ cwd: a }
@@ -596,7 +602,9 @@ describe("multiworker", () => {
 			);
 		});
 
-		it("should error if multiple pages configs are provided", async () => {
+		it("should error if multiple pages configs are provided", async ({
+			expect,
+		}) => {
 			const pages = helper.runLongLived(
 				`wrangler pages dev -c wrangler.toml -c wrangler.toml`,
 				{ cwd: a }
@@ -622,7 +630,7 @@ describe("multiworker", () => {
 						binding = "BEE"
 						service = '${workerName2}'
 				`,
-				"src/index.ts": dedent/* javascript */ `
+				"src/index.ts": dedent /* javascript */ `
 					export default {
 						async fetch(req, env) {
 							return env.BEE.fetch(req);
@@ -643,7 +651,7 @@ describe("multiworker", () => {
 						[triggers]
 						crons = ["0 * * * *"]
 				`,
-				"src/index.ts": dedent/* javascript */ `
+				"src/index.ts": dedent /* javascript */ `
 					export default {
 						async fetch(req, env) {
 							return new Response("hello world");
@@ -656,7 +664,9 @@ describe("multiworker", () => {
 			});
 		});
 
-		it("shows warning with correct port when multiple workers have cron triggers", async () => {
+		it("shows warning with correct port when multiple workers have cron triggers", async ({
+			expect,
+		}) => {
 			const worker = helper.runLongLived(
 				`wrangler dev -c wrangler.toml -c ${b}/wrangler.toml`,
 				{ cwd: a }

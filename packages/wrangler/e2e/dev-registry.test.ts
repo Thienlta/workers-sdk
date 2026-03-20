@@ -1,7 +1,7 @@
 import getPort from "get-port";
 import dedent from "ts-dedent";
 import { fetch, Request } from "undici";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, it, vi } from "vitest";
 import { WranglerE2ETestHelper } from "./helpers/e2e-wrangler-test";
 import { fetchText } from "./helpers/fetch-text";
 import { generateResourceName } from "./helpers/generate-resource-name";
@@ -53,7 +53,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 					main = "src/index.ts"
 					compatibility_date = "2023-01-01"
 			`,
-			"src/index.ts": dedent/* javascript */ `
+			"src/index.ts": dedent /* javascript */ `
 				export default {
 					fetch(req, env) {
                         const url = new URL(req.url)
@@ -104,7 +104,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
                         { name = "REFERENCED_DO", class_name = "MyDurableObject", script_name = "${workerName}" }
                     ]
 			`,
-			"src/index.ts": dedent/* javascript */ `
+			"src/index.ts": dedent /* javascript */ `
 				export default{
 					fetch(req, env) {
                         const url = new URL(req.url)
@@ -132,7 +132,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 					name = "${workerName3}"
 					main = "src/index.ts"
 			`,
-			"src/index.ts": dedent/* javascript */ `
+			"src/index.ts": dedent /* javascript */ `
                 addEventListener("fetch", (event) => {
                     event.respondWith(new Response("Hello from service worker"));
                 });
@@ -161,7 +161,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 				`,
 			});
 		});
-		it("can fetch b", async () => {
+		it("can fetch b", async ({ expect }) => {
 			const worker = helper.runLongLived(cmd, { cwd: b });
 
 			const { url } = await worker.waitForReady(5_000);
@@ -171,7 +171,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 			);
 		});
 
-		it("can fetch b through a (start b, start a)", async () => {
+		it("can fetch b through a (start b, start a)", async ({ expect }) => {
 			const workerB = helper.runLongLived(cmd, { cwd: b });
 			// We don't need b's URL, but ensure that b starts up before a
 			await workerB.waitForReady(5_000);
@@ -189,7 +189,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 			);
 		});
 
-		it("can fetch b through a (start a, start b)", async () => {
+		it("can fetch b through a (start a, start b)", async ({ expect }) => {
 			const workerA = helper.runLongLived(cmd, { cwd: a });
 			const { url } = await workerA.waitForReady(5_000);
 
@@ -218,7 +218,9 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 			});
 		});
 
-		it("can fetch service worker c through a (start c, start a)", async () => {
+		it("can fetch service worker c through a (start c, start a)", async ({
+			expect,
+		}) => {
 			const workerC = helper.runLongLived(cmd, { cwd: c });
 			// We don't need c's URL, but ensure that c starts up before a
 			await workerC.waitForReady(5_000);
@@ -239,7 +241,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 		// TODO: Investigate why this doesn't work on Windows
 		it.skipIf(process.platform === "win32")(
 			"can fetch service worker c through a (start a, start c)",
-			async () => {
+			async ({ expect }) => {
 				const workerA = helper.runLongLived(cmd, { cwd: a });
 				const { url } = await workerA.waitForReady(5_000);
 
@@ -269,7 +271,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 							[[tail_consumers]]
 							service = "${workerName2}"
 					`,
-				"src/index.ts": dedent/* javascript */ `
+				"src/index.ts": dedent /* javascript */ `
 						export default {
 							async fetch(req, env) {
 								console.log("log something")
@@ -286,7 +288,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 							main = "src/index.ts"
 							compatibility_date = "2025-04-28"
 					`,
-				"src/index.ts": dedent/* javascript */ `
+				"src/index.ts": dedent /* javascript */ `
 						export default {
 							async tail(event) {
 								console.log("received tail event", event)
@@ -296,14 +298,14 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 			});
 		});
 
-		it("can fetch a without b running", async () => {
+		it("can fetch a without b running", async ({ expect }) => {
 			const workerA = helper.runLongLived(cmd, { cwd: a });
 			const { url } = await workerA.waitForReady(5_000);
 
 			await expect(fetchText(`${url}`)).resolves.toBe("hello from a");
 		});
 
-		it("tail event sent to b", async () => {
+		it("tail event sent to b", async ({ expect }) => {
 			const workerA = helper.runLongLived(cmd, { cwd: a });
 			const { url } = await workerA.waitForReady(5_000);
 
@@ -346,7 +348,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 				`,
 			});
 		});
-		it("can fetch DO through a", async () => {
+		it("can fetch DO through a", async ({ expect }) => {
 			const worker = helper.runLongLived(cmd, { cwd: a });
 
 			const { url } = await worker.waitForReady(5_000);
@@ -362,7 +364,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 
 		it.skipIf(process.platform === "win32")(
 			"can fetch remote DO attached to a through b (start b, start a)",
-			async () => {
+			async ({ expect }) => {
 				const workerB = helper.runLongLived(cmd, { cwd: b });
 				const { url } = await workerB.waitForReady(5_000);
 
@@ -384,7 +386,9 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 			}
 		);
 
-		it("can fetch remote DO attached to a through b (start a, start b)", async () => {
+		it("can fetch remote DO attached to a through b (start a, start b)", async ({
+			expect,
+		}) => {
 			const workerA = helper.runLongLived(cmd, { cwd: a });
 			await workerA.waitForReady(5_000);
 
@@ -418,7 +422,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 						binding = "BEE"
 						service = '${workerName2}'
 				`,
-				"dist/_worker.js": dedent/* javascript */ `export default {
+				"dist/_worker.js": dedent /* javascript */ `export default {
 					fetch(req, env) {
                         const url = new URL(req.url)
                         if (url.pathname === "/service") {
@@ -429,7 +433,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 				};`,
 			});
 		});
-		it("can fetch b", async () => {
+		it("can fetch b", async ({ expect }) => {
 			const worker = helper.runLongLived(cmd, { cwd: b });
 
 			const { url } = await worker.waitForReady(5_000);
@@ -439,7 +443,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 			);
 		});
 
-		it("can fetch a (pages project)", async () => {
+		it("can fetch a (pages project)", async ({ expect }) => {
 			const port = await getPort();
 			const worker = helper.runLongLived(
 				`${cmd.replace("wrangler dev", "wrangler pages dev")} --port ${port}`,
@@ -453,7 +457,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 			);
 		});
 
-		it("can fetch b through a (start b, start a)", async () => {
+		it("can fetch b through a (start b, start a)", async ({ expect }) => {
 			const workerB = helper.runLongLived(cmd, { cwd: b });
 			// We don't need b's URL, but ensure that b starts up before a
 			await workerB.waitForReady(5_000);
@@ -478,7 +482,7 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 			);
 		});
 
-		it("can fetch b through a (start a, start b)", async () => {
+		it("can fetch b through a (start a, start b)", async ({ expect }) => {
 			const port = await getPort();
 			const workerA = helper.runLongLived(
 				`${cmd.replace("wrangler dev", "wrangler pages dev")} --port ${port}`,
@@ -498,7 +502,9 @@ describe.each([{ cmd: "wrangler dev" }])("dev registry $cmd", ({ cmd }) => {
 			);
 		});
 
-		it("can fetch b through a (start a, start b) w/o config file", async () => {
+		it("can fetch b through a (start a, start b) w/o config file", async ({
+			expect,
+		}) => {
 			await baseSeed(a, {
 				"wrangler.toml": dedent`
 				`,
