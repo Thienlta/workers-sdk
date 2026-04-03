@@ -3,11 +3,7 @@
 
 import { Hono } from "hono/tiny";
 import mime from "mime";
-import {
-	LOCAL_EXPLORER_API_PATH,
-	LOCAL_EXPLORER_BASE_PATH,
-} from "../../plugins/core/constants";
-import { CoreBindings } from "../core";
+import { CorePaths } from "../core";
 import { errorResponse, validateQuery, validateRequestBody } from "./common";
 import { wrapResponse } from "./common";
 import {
@@ -52,6 +48,7 @@ import {
 } from "./resources/workflows";
 import type { BindingIdMap } from "../../plugins/core/types";
 import type { WorkerRegistry } from "../../shared/dev-registry-types";
+import type { CoreBindings } from "../core";
 import type { LocalExplorerWorker } from "./generated";
 
 export type Env = {
@@ -68,7 +65,9 @@ export type Env = {
 
 export type AppBindings = { Bindings: Env };
 
-const app = new Hono<AppBindings>().basePath(LOCAL_EXPLORER_BASE_PATH);
+const EXPLORER_API_PATH = `${CorePaths.EXPLORER}/api`;
+
+const app = new Hono<AppBindings>().basePath(CorePaths.EXPLORER);
 
 // Global error handler - catches all uncaught errors and wraps them in an error response
 app.onError((err) => {
@@ -121,14 +120,13 @@ function getContentType(filePath: string): string {
 }
 
 app.get("/*", async (c, next) => {
-	if (c.req.path.startsWith(LOCAL_EXPLORER_API_PATH)) {
+	if (c.req.path.startsWith(EXPLORER_API_PATH)) {
 		// continue on to API routes
 		return next();
 	}
 
 	// Some simple asset path handling...
-	let assetPath =
-		c.req.path.replace(LOCAL_EXPLORER_BASE_PATH, "") || "/index.html";
+	let assetPath = c.req.path.replace(CorePaths.EXPLORER, "") || "/index.html";
 	if (assetPath === "/") {
 		assetPath = "/index.html";
 	}

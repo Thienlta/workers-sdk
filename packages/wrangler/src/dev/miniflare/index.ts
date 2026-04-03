@@ -2,6 +2,7 @@ import assert from "node:assert";
 import path from "node:path";
 import { getDevContainerImageName } from "@cloudflare/containers-shared";
 import {
+	getBrowserRenderingHeadfulFromEnv,
 	getLocalExplorerEnabledFromEnv,
 	UserError,
 } from "@cloudflare/workers-utils";
@@ -417,6 +418,7 @@ type WorkerOptionsBindings = Pick<
 	| "browserRendering"
 	| "vectorize"
 	| "vpcServices"
+	| "vpcNetworks"
 	| "dispatchNamespaces"
 	| "mtlsCertificates"
 	| "helloWorld"
@@ -483,6 +485,7 @@ export function buildMiniflareBindingOptions(
 	const mtlsCertificates = extractBindingsOfType("mtls_certificate", bindings);
 	const vectorizeBindings = extractBindingsOfType("vectorize", bindings);
 	const vpcServices = extractBindingsOfType("vpc_service", bindings);
+	const vpcNetworks = extractBindingsOfType("vpc_network", bindings);
 	const secretsStoreSecrets = extractBindingsOfType(
 		"secrets_store_secret",
 		bindings
@@ -854,12 +857,19 @@ export function buildMiniflareBindingOptions(
 					vpc.binding,
 					{
 						service_id: vpc.service_id,
-						remoteProxyConnectionString:
-							vpc.remote && remoteProxyConnectionString
-								? remoteProxyConnectionString
-								: undefined,
+						remoteProxyConnectionString,
 					},
 				];
+			})
+		),
+		vpcNetworks: Object.fromEntries(
+			vpcNetworks.map((vpc) => {
+				warnOrError("vpc_network", vpc.remote, "always-remote");
+				const id =
+					vpc.tunnel_id !== undefined
+						? { tunnel_id: vpc.tunnel_id }
+						: { network_id: vpc.network_id as string };
+				return [vpc.binding, { ...id, remoteProxyConnectionString }];
 			})
 		),
 
@@ -982,6 +992,9 @@ export async function buildMiniflareOptions(
 		config,
 		remoteProxyConnectionString
 	);
+	if (bindingOptions.browserRendering && getBrowserRenderingHeadfulFromEnv()) {
+		bindingOptions.browserRendering.headful = true;
+	}
 	const sitesOptions = buildSitesOptions(config);
 	const defaultPersistRoot = getDefaultPersistRoot(config.localPersistencePath);
 	const assetOptions = buildAssetOptions(config);

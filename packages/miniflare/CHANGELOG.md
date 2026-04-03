@@ -1,5 +1,116 @@
 # miniflare
 
+## 4.20260401.0
+
+### Minor Changes
+
+- [#13051](https://github.com/cloudflare/workers-sdk/pull/13051) [`d5bffde`](https://github.com/cloudflare/workers-sdk/commit/d5bffdef00618f1d441837a725779d35b176911e) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - Deprecate `supportedCompatibilityDate` export
+
+  The `supportedCompatibilityDate` export is now deprecated. Instead of relying on the workerd-derived compatibility date, callers should just use today's date directly, e.g. `new Date().toISOString().slice(0, 10)`.
+
+- [#13011](https://github.com/cloudflare/workers-sdk/pull/13011) [`b9b7e9d`](https://github.com/cloudflare/workers-sdk/commit/b9b7e9d9feec8491f53d144a4fd239cfb66fcd41) Thanks [@ruifigueira](https://github.com/ruifigueira)! - Add experimental headful browser rendering support for local development
+
+  > **Experimental:** This feature may be removed or changed without notice.
+
+  When developing locally with the Browser Rendering API, you can enable headful (visible) mode via the `X_BROWSER_HEADFUL` environment variable to see the browser while debugging:
+
+  ```sh
+  X_BROWSER_HEADFUL=true wrangler dev
+  X_BROWSER_HEADFUL=true vite dev
+  ```
+
+  **Note:** when using `@cloudflare/playwright`, two Chrome windows may appear — the initial blank page and the one created by `browser.newPage()`. This is expected behavior due to how Playwright handles browser contexts via CDP.
+
+- [#12992](https://github.com/cloudflare/workers-sdk/pull/12992) [`48d83ca`](https://github.com/cloudflare/workers-sdk/commit/48d83ca334e5f668e2d0faaa7a9401e4e1f68a87) Thanks [@RiscadoA](https://github.com/RiscadoA)! - Add `vpc_networks` binding support for routing Worker traffic through a Cloudflare Tunnel or network.
+
+  ```jsonc
+  {
+    "vpc_networks": [
+      // Route through a specific Cloudflare Tunnel
+      { "binding": "MY_FIRST_VPC", "tunnel_id": "<tunnel-id>" },
+      // Route through the Cloudflare One mesh network
+      { "binding": "MY_SECOND_VPC", "network_id": "cf1:network" }
+    ]
+  }
+  ```
+
+### Patch Changes
+
+- [#13155](https://github.com/cloudflare/workers-sdk/pull/13155) [`5d29055`](https://github.com/cloudflare/workers-sdk/commit/5d29055edf482bd51c3728b26594b5e4ac54f0a9) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update dependencies of "miniflare", "wrangler"
+
+  The following dependency versions have been updated:
+
+  | Dependency | From         | To           |
+  | ---------- | ------------ | ------------ |
+  | workerd    | 1.20260329.1 | 1.20260331.1 |
+
+- [#13162](https://github.com/cloudflare/workers-sdk/pull/13162) [`fb67a18`](https://github.com/cloudflare/workers-sdk/commit/fb67a18aa2b4a34c292737591e6d5a3401f8d742) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update dependencies of "miniflare", "wrangler"
+
+  The following dependency versions have been updated:
+
+  | Dependency | From         | To           |
+  | ---------- | ------------ | ------------ |
+  | workerd    | 1.20260331.1 | 1.20260401.1 |
+
+- [#13238](https://github.com/cloudflare/workers-sdk/pull/13238) [`b2f53ea`](https://github.com/cloudflare/workers-sdk/commit/b2f53eaab314eaf395860525b4c0baf28dfd5fad) Thanks [@guybedford](https://github.com/guybedford)! - Fix source phase imports parsing in Miniflare
+
+  Miniflare now uses the `acorn-import-phases` plugin to parse `import source` syntax when analyzing module dependencies. This fixes `ERR_MODULE_PARSE` errors when running Workers that use source phase imports for WebAssembly modules in local development.
+
+## 4.20260329.0
+
+### Minor Changes
+
+- [#13025](https://github.com/cloudflare/workers-sdk/pull/13025) [`9eff028`](https://github.com/cloudflare/workers-sdk/commit/9eff0285cb2e5d94b9d0788dceb855119e596707) Thanks [@ruifigueira](https://github.com/ruifigueira)! - Add missing devtools endpoints to browser rendering local binding.
+
+  The local browser rendering binding now implements the full set of devtools endpoints, matching the remote Browser Rendering API:
+
+  - `GET /v1/limits` — returns local concurrency defaults
+  - `GET /v1/history` — returns empty array (no persistence in local dev)
+  - `GET /v1/devtools/session` - list and inspect active sessions
+  - `GET /v1/devtools/session/:id` — list and inspect active session
+  - `GET /v1/devtools/browser/:id/json/version` — Browser version metadata, includes webSocketDebuggerUrl
+  - `GET /v1/devtools/browser/:id/json/list` — A list of all available websocket targets
+  - `GET /v1/devtools/browser/:id/json` — Alias for `GET /v1/devtools/browser/:id/json`
+  - `GET /v1/devtools/browser/:id/json/protocol` — The current devtools protocol, as JSON. Includes webSocketDebuggerUrl and devtoolsFrontendUrl
+  - `PUT /v1/devtools/browser/:id/json/new` — Opens a new tab. Responds with the websocket target data for the new tab
+  - `GET /v1/devtools/browser/:id/json/activate/:target` — Brings a page into the foreground (activate a tab)
+  - `GET /v1/devtools/browser/:id/json/close/:target` — Closes the target page identified by targetId
+  - `GET /v1/devtools/browser/:id/page/:target` — WebSocket connection to a page target
+  - `GET /v1/devtools/browser/:id` — WebSocket connection to a previously acquired browser session
+  - `DELETE /v1/devtools/browser/:id` — Closes a browser session
+  - `POST /v1/devtools/browser` — Acquires a new session
+  - `GET /v1/devtools/browser` — Acquire a new session and connect via WebSocket in one step, returning `cf-browser-session-id` header
+
+- [#13086](https://github.com/cloudflare/workers-sdk/pull/13086) [`d4c6158`](https://github.com/cloudflare/workers-sdk/commit/d4c61587094a2a2ceee35acfb3619c95e0a993fe) Thanks [@pombosilva](https://github.com/pombosilva)! - Add Workflows support to the local explorer UI.
+
+  The local explorer (`/cdn-cgi/explorer/`) now includes a full Workflows dashboard for viewing and managing workflow instances during local development.
+
+  UI features:
+
+  - Workflow instance list with status badges, creation time, action buttons, and pagination
+  - Status summary bar with instance counts per status
+  - Status filter dropdown and search
+  - Instance detail page with step history, params/output cards, error display, and expandable step details
+  - Create instance dialog with optional ID and JSON params
+
+### Patch Changes
+
+- [#13111](https://github.com/cloudflare/workers-sdk/pull/13111) [`f214760`](https://github.com/cloudflare/workers-sdk/commit/f2147605e1081ebdec29e76c4b04e3af503d282e) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update dependencies of "miniflare", "wrangler"
+
+  The following dependency versions have been updated:
+
+  | Dependency | From         | To           |
+  | ---------- | ------------ | ------------ |
+  | workerd    | 1.20260317.1 | 1.20260329.1 |
+
+- [#13078](https://github.com/cloudflare/workers-sdk/pull/13078) [`9282493`](https://github.com/cloudflare/workers-sdk/commit/9282493b11ba07bcadb981c2cfc255e8eb5b9b15) Thanks [@penalosa](https://github.com/penalosa)! - Fix noisy EBUSY errors on Windows when disposing Miniflare instances
+
+  On Windows, `workerd` may not release file handles immediately after disposal, causing `EBUSY` errors when Miniflare tries to remove its temporary directory during `dispose()`. Previously, this error propagated to the caller (e.g. vitest-pool-workers), producing repeated noisy error messages in test output. The cleanup is now best-effort — matching the existing exit hook behaviour — since the temporary directory lives in `os.tmpdir()` and will be cleaned up by the OS.
+
+- [#13090](https://github.com/cloudflare/workers-sdk/pull/13090) [`a532eea`](https://github.com/cloudflare/workers-sdk/commit/a532eeabfd445e80ce597612da15e3e020ef03c6) Thanks [@edmundhung](https://github.com/edmundhung)! - Remove `LOCAL_EXPLORER_BASE_PATH` and `LOCAL_EXPLORER_API_PATH` constants in favor of `CorePaths.EXPLORER`
+
+  These were redundant aliases introduced before `CorePaths` was centralized. All internal consumers now use `CorePaths.EXPLORER` directly.
+
 ## 4.20260317.3
 
 ### Minor Changes

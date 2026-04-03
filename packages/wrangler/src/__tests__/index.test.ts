@@ -39,6 +39,8 @@ describe("wrangler", () => {
 				  wrangler docs [search..]        📚 Open Wrangler's command documentation in your browser
 				  wrangler complete [shell]       ⌨️ Generate and handle shell completions
 
+				  wrangler email                  Manage Cloudflare Email services [open beta]
+
 				ACCOUNT
 				  wrangler auth                   🔐 Manage authentication
 				  wrangler login                  🔓 Login to Cloudflare
@@ -47,6 +49,7 @@ describe("wrangler", () => {
 
 				COMPUTE & AI
 				  wrangler ai                     🤖 Manage AI models
+				  wrangler ai-search              🔍 Manage AI Search instances [open beta]
 				  wrangler containers             📦 Manage Containers [open beta]
 				  wrangler delete [name]          🗑️ Delete a Worker from Cloudflare
 				  wrangler deploy [script]        🆙 Deploy a Worker to Cloudflare
@@ -111,6 +114,8 @@ describe("wrangler", () => {
 				  wrangler docs [search..]        📚 Open Wrangler's command documentation in your browser
 				  wrangler complete [shell]       ⌨️ Generate and handle shell completions
 
+				  wrangler email                  Manage Cloudflare Email services [open beta]
+
 				ACCOUNT
 				  wrangler auth                   🔐 Manage authentication
 				  wrangler login                  🔓 Login to Cloudflare
@@ -119,6 +124,7 @@ describe("wrangler", () => {
 
 				COMPUTE & AI
 				  wrangler ai                     🤖 Manage AI models
+				  wrangler ai-search              🔍 Manage AI Search instances [open beta]
 				  wrangler containers             📦 Manage Containers [open beta]
 				  wrangler delete [name]          🗑️ Delete a Worker from Cloudflare
 				  wrangler deploy [script]        🆙 Deploy a Worker to Cloudflare
