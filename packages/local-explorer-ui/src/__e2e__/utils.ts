@@ -14,10 +14,10 @@ async function navigateTo(path: string): Promise<void> {
 }
 
 /**
- * Wait for the page to finish loading (no pending network requests).
+ * Wait for the page to finish loading.
  */
 async function waitForPageLoad(): Promise<void> {
-	await page.waitForLoadState("networkidle");
+	await page.waitForLoadState("domcontentloaded");
 }
 
 /**
@@ -49,11 +49,47 @@ export async function seedDO(objectId: string = "test-object"): Promise<void> {
 }
 
 /**
+ * Seed a Workflow instance by triggering via the explorer API.
+ */
+export async function seedWorkflow(workflowName: string): Promise<{
+	id: string;
+}> {
+	const workflowId = `e2e-test-${Date.now()}`;
+
+	await fetch(
+		`${workerUrl}/cdn-cgi/explorer/api/workflows/${workflowName}/instances`,
+		{
+			body: JSON.stringify({
+				id: workflowId,
+				params: { name: "E2E Test" },
+			}),
+			headers: {
+				"Content-Type": "application/json",
+			},
+			method: "POST",
+		}
+	);
+
+	return {
+		id: workflowId,
+	};
+}
+
+/**
+ * Delete all instances of a workflow via the explorer API.
+ */
+export async function cleanupWorkflow(workflowName: string): Promise<void> {
+	await fetch(`${workerUrl}/cdn-cgi/explorer/api/workflows/${workflowName}`, {
+		method: "DELETE",
+	});
+}
+
+/**
  * Common wait options for `vi.waitFor`
  */
 const WAIT_OPTIONS = {
 	interval: 100,
-	timeout: 10_000,
+	timeout: 30_000,
 };
 
 /**
@@ -106,6 +142,14 @@ export async function navigateToD1(
  */
 export async function navigateToDOClass(className: string): Promise<void> {
 	await navigateTo(`/cdn-cgi/explorer/do/${className}`);
+	await waitForPageLoad();
+}
+
+/**
+ * Navigate to a Workflow instances list page.
+ */
+export async function navigateToWorkflow(workflowName: string): Promise<void> {
+	await navigateTo(`/cdn-cgi/explorer/workflows/${workflowName}`);
 	await waitForPageLoad();
 }
 
@@ -301,7 +345,7 @@ export async function waitForQueryEditor(options?: {
 	// Wait for the `CodeMirror` editor to be visible and have the `contenteditable` attribute
 	await page.waitForSelector(".cm-editor .cm-content[contenteditable]", {
 		state: "visible",
-		timeout: options?.timeout ?? 10_000,
+		timeout: options?.timeout ?? WAIT_OPTIONS.timeout,
 	});
 }
 
@@ -368,7 +412,7 @@ export async function waitForQueryResult(options?: {
 	timeout?: number;
 }): Promise<void> {
 	await page.waitForSelector("text=/Executed \\d+\\/\\d+/", {
-		timeout: options?.timeout ?? 10_000,
+		timeout: options?.timeout ?? WAIT_OPTIONS.timeout,
 	});
 }
 
