@@ -8,7 +8,10 @@ import {
 	SchedulingPolicy,
 } from "@cloudflare/containers-shared";
 import { ApplicationAffinityHardwareGeneration } from "@cloudflare/containers-shared/src/client/models/ApplicationAffinityHardwareGeneration";
-import { writeWranglerConfig } from "@cloudflare/workers-utils/test-helpers";
+import {
+	runInTempDir,
+	writeWranglerConfig,
+} from "@cloudflare/workers-utils/test-helpers";
 import { http, HttpResponse } from "msw";
 import { afterEach, assert, beforeEach, describe, it, vi } from "vitest";
 import { clearCachedAccount } from "../../cloudchamber/locations";
@@ -27,7 +30,6 @@ import {
 	mswSuccessDeploymentScriptMetadata,
 } from "../helpers/msw";
 import { mswListNewDeploymentsLatestFull } from "../helpers/msw/handlers/versions";
-import { runInTempDir } from "../helpers/run-in-tmp";
 import { runWrangler } from "../helpers/run-wrangler";
 import type {
 	AccountRegistryToken,
@@ -68,14 +70,24 @@ describe("wrangler deploy with containers", () => {
 
 		fs.writeFileSync("./Dockerfile", "FROM scratch");
 
-		await expect(
-			runWrangler("deploy index.js")
-		).rejects.toThrowErrorMatchingInlineSnapshot(
-			`
-			[Error: The Docker CLI could not be launched. Please ensure that the Docker CLI is installed and the daemon is running.
-			Other container tooling that is compatible with the Docker CLI and engine may work, but is not yet guaranteed to do so. You can specify an executable with the environment variable WRANGLER_DOCKER_BIN and a socket with DOCKER_HOST.
-			If you cannot run Docker locally, you can still deploy your Worker by passing --containers-rollout=none. This will not deploy or update your Container.]
-		`
+		let errorMessage = "";
+		try {
+			await runWrangler("deploy index.js");
+		} catch (e) {
+			errorMessage = (e as Error).message;
+		}
+		expect(errorMessage).not.toBe("");
+		expect(errorMessage).toContain(
+			"The Docker CLI is needed to build the configured image before deploying but could not be launched."
+		);
+		expect(errorMessage).toContain(
+			"If Docker is not installed, download it from https://docs.docker.com/get-started/get-docker/"
+		);
+		expect(errorMessage).toContain(
+			"Other container tooling that is compatible with the Docker CLI and engine may work, but is not yet guaranteed to do so."
+		);
+		expect(errorMessage).toContain(
+			"you can still deploy your Worker by passing --containers-rollout=none"
 		);
 	});
 	it("should fail early if the account id doesn't match the account id in the image uri", async ({
